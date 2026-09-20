@@ -1,27 +1,30 @@
+
+
+
 "use strict";
 
 (function() {
 
 
-const iris_1825i_1 = typeof TextDecoder !== 'undefined'
-function utf8_to_str (iris_1825i_3) {
-	let iris_1825i_4 = '', iris_1825i_5 = 0, iris_1825i_6 = iris_1825i_3.length, iris_1825i_7, iris_1825i_8, iris_1825i_9, iris_1825i_10;
-    while (iris_1825i_5 < iris_1825i_6) {
-    iris_1825i_7 = iris_1825i_3[iris_1825i_5++]
-    if (iris_1825i_7 < 0x80) { iris_1825i_4 += String.fromCharCode(iris_1825i_7); continue }
-    if (iris_1825i_7 < 0xe0) { iris_1825i_8 = iris_1825i_3[iris_1825i_5++] & 0x3f; iris_1825i_4 += String.fromCharCode(((iris_1825i_7 & 0x1f) << 6) | iris_1825i_8); continue }
-      if (iris_1825i_7 < 0xf0) { iris_1825i_8 = iris_1825i_3[iris_1825i_5++] & 0x3f; iris_1825i_9 = iris_1825i_3[iris_1825i_5++] & 0x3f; iris_1825i_4 += String.fromCharCode(((iris_1825i_7 & 0x0f) << 12) | (iris_1825i_8 << 6) | iris_1825i_9); continue }
-      iris_1825i_8 = iris_1825i_3[iris_1825i_5++] & 0x3f; iris_1825i_9 = iris_1825i_3[iris_1825i_5++] & 0x3f; iris_1825i_10 = iris_1825i_3[iris_1825i_5++] & 0x3f
-    iris_1825i_4 += String.fromCharCode(((iris_1825i_7 & 0x07) << 18) | (iris_1825i_8 << 12) | (iris_1825i_9 << 6) | iris_1825i_10);
+const hasNativeTextDecoder = typeof TextDecoder !== 'undefined'
+function utf8_to_str (arr) {
+	let out = '', i = 0, len = arr.length, c1, c2, c3, c4;
+    while (i < len) {
+    c1 = arr[i++]
+    if (c1 < 0x80) { out += String.fromCharCode(c1); continue }
+    if (c1 < 0xe0) { c2 = arr[i++] & 0x3f; out += String.fromCharCode(((c1 & 0x1f) << 6) | c2); continue }
+      if (c1 < 0xf0) { c2 = arr[i++] & 0x3f; c3 = arr[i++] & 0x3f; out += String.fromCharCode(((c1 & 0x0f) << 12) | (c2 << 6) | c3); continue }
+      c2 = arr[i++] & 0x3f; c3 = arr[i++] & 0x3f; c4 = arr[i++] & 0x3f
+    out += String.fromCharCode(((c1 & 0x07) << 18) | (c2 << 12) | (c3 << 6) | c4);
 	}
-    return iris_1825i_4;
+    return out;
 }
-const iris_1825i_11 = (iris_1825i_12) => iris_1825i_1
-  ? new TextDecoder().decode(iris_1825i_12)
-	: utf8_to_str(iris_1825i_12)
+const bytes_to_str = (bytes) => hasNativeTextDecoder
+  ? new TextDecoder().decode(bytes)
+	: utf8_to_str(bytes)
 
 
-const iris_1825i_13 = Object.freeze({
+const Op = Object.freeze({
   NOP:0, BREAK:1, LOADNIL:2, LOADB:3, LOADN:4, LOADK:5, MOVE:6, GETGLOBAL:7, SETGLOBAL:8,
 	GETUPVAL:9, SETUPVAL:10, CLOSEUPVALS:11, GETIMPORT:12, GETTABLE:13, SETTABLE:14, GETTABLEKS:15,
   SETTABLEKS:16, GETTABLEN:17, SETTABLEN:18, NEWCLOSURE:19, NAMECALL:20, CALL:21, RETURN:22, JUMP:23,
@@ -36,12 +39,12 @@ const iris_1825i_13 = Object.freeze({
   CALLFB:87, CMPPROTO:88, FASTPCALL:89, NEWCLASS:90,
 });
 
-const iris_1825i_14 = Object.freeze({
+const ConstK = Object.freeze({
 	Nil:0, Boolean:1, Number:2, String:3, Import:4, Table:5, Closure:6, Vector:7,
   TableWithConstants:8, Sentinel:9, Integer:10, ClassShape:11, VectorD:12,
 });
 
-const iris_1825i_15 = [
+const OP_NAMES = [
     'NOP','BREAK','LOADNIL',"LOADB","LOADN",'LOADK','MOVE',"GETGLOBAL","SETGLOBAL",
   'GETUPVAL','SETUPVAL','CLOSEUPVALS',"GETIMPORT","GETTABLE","SETTABLE","GETTABLEKS",
     "SETTABLEKS",'GETTABLEN',"SETTABLEN",'NEWCLOSURE','NAMECALL','CALL',"RETURN","JUMP",
@@ -56,117 +59,117 @@ const iris_1825i_15 = [
   "CALLFB","CMPPROTO","FASTPCALL","NEWCLASS",
 ]
 
-function i_a(iris_1825i_5) { return (iris_1825i_5>>8)&0xff }
-function i_b(iris_1825i_5) { return (iris_1825i_5>>16)&0xff }
-function i_c (iris_1825i_5) { return (iris_1825i_5>>24)&0xff }
-function i_d (iris_1825i_5) { return (iris_1825i_5|0)>>16 }
-function i_e (iris_1825i_5) { return (iris_1825i_5|0)>>8 }
-function i_op (iris_1825i_5) { return iris_1825i_5&0xff }
-function aux_a (iris_1825i_23) { return iris_1825i_23&0xff }
-function aux_b(iris_1825i_23) { return (iris_1825i_23>>8)&0xff }
-// aux layouts: 24-bit const, 1-bit const, top-bit not-flag
-function aux_kv (iris_1825i_23) { return iris_1825i_23&0xffffff }
-function aux_kb (iris_1825i_23) { return iris_1825i_23&0x1 }
-function aux_not(iris_1825i_23) { return (iris_1825i_23>>>31)!==0 }
-function op_name (iris_1825i_5) { return iris_1825i_5>=0&&iris_1825i_5<iris_1825i_15.length?iris_1825i_15[iris_1825i_5]:"???" }
-function wide(iris_1825i_30) {
-   switch (iris_1825i_30) {
-        case iris_1825i_13.GETGLOBAL: case iris_1825i_13.SETGLOBAL: case iris_1825i_13.GETIMPORT: case iris_1825i_13.GETTABLEKS:
-    case iris_1825i_13.SETTABLEKS: case iris_1825i_13.NAMECALL: case iris_1825i_13.JUMPIFEQ: case iris_1825i_13.JUMPIFLE:
-        case iris_1825i_13.JUMPIFLT: case iris_1825i_13.JUMPIFNOTEQ: case iris_1825i_13.JUMPIFNOTLE: case iris_1825i_13.JUMPIFNOTLT:
-        case iris_1825i_13.NEWTABLE: case iris_1825i_13.SETLIST: case iris_1825i_13.FORGLOOP: case iris_1825i_13.LOADKX:
-    case iris_1825i_13.FASTCALL2: case iris_1825i_13.FASTCALL2K: case iris_1825i_13.FASTCALL3: case iris_1825i_13.JUMPXEQKNIL:
-      case iris_1825i_13.JUMPXEQKB: case iris_1825i_13.JUMPXEQKN: case iris_1825i_13.JUMPXEQKS: case iris_1825i_13.GETUDATAKS:
-        case iris_1825i_13.SETUDATAKS: case iris_1825i_13.NAMECALLUDATA: case iris_1825i_13.NEWCLASSMEMBER: case iris_1825i_13.CALLFB:
-		case iris_1825i_13.CMPPROTO: case iris_1825i_13.NEWCLASS:
+function i_a(i) { return (i>>8)&0xff }
+function i_b(i) { return (i>>16)&0xff }
+function i_c (i) { return (i>>24)&0xff }
+function i_d (i) { return (i|0)>>16 }
+function i_e (i) { return (i|0)>>8 }
+function i_op (i) { return i&0xff }
+function aux_a (a) { return a&0xff }
+function aux_b(a) { return (a>>8)&0xff }
+
+function aux_kv (a) { return a&0xffffff }
+function aux_kb (a) { return a&0x1 }
+function aux_not(a) { return (a>>>31)!==0 }
+function op_name (i) { return i>=0&&i<OP_NAMES.length?OP_NAMES[i]:"???" }
+function wide(op) {
+   switch (op) {
+        case Op.GETGLOBAL: case Op.SETGLOBAL: case Op.GETIMPORT: case Op.GETTABLEKS:
+    case Op.SETTABLEKS: case Op.NAMECALL: case Op.JUMPIFEQ: case Op.JUMPIFLE:
+        case Op.JUMPIFLT: case Op.JUMPIFNOTEQ: case Op.JUMPIFNOTLE: case Op.JUMPIFNOTLT:
+        case Op.NEWTABLE: case Op.SETLIST: case Op.FORGLOOP: case Op.LOADKX:
+    case Op.FASTCALL2: case Op.FASTCALL2K: case Op.FASTCALL3: case Op.JUMPXEQKNIL:
+      case Op.JUMPXEQKB: case Op.JUMPXEQKN: case Op.JUMPXEQKS: case Op.GETUDATAKS:
+        case Op.SETUDATAKS: case Op.NAMECALLUDATA: case Op.NEWCLASSMEMBER: case Op.CALLFB:
+		case Op.CMPPROTO: case Op.NEWCLASS:
       return true
     default: return false;
   }
 }
-function op_length (iris_1825i_30) { return wide(iris_1825i_30)?2:1 }
-function op_is_jump_d (iris_1825i_30) {
-	switch (iris_1825i_30) {
-		case iris_1825i_13.JUMP: case iris_1825i_13.JUMPIF: case iris_1825i_13.JUMPIFNOT: case iris_1825i_13.JUMPIFEQ:
-    case iris_1825i_13.JUMPIFLE: case iris_1825i_13.JUMPIFLT: case iris_1825i_13.JUMPIFNOTEQ: case iris_1825i_13.JUMPIFNOTLE:
-		case iris_1825i_13.JUMPIFNOTLT: case iris_1825i_13.FORNPREP: case iris_1825i_13.FORNLOOP: case iris_1825i_13.FORGPREP:
-    case iris_1825i_13.FORGLOOP: case iris_1825i_13.FORGPREP_INEXT: case iris_1825i_13.FORGPREP_NEXT: case iris_1825i_13.JUMPBACK:
-        case iris_1825i_13.JUMPXEQKNIL: case iris_1825i_13.JUMPXEQKB: case iris_1825i_13.JUMPXEQKN: case iris_1825i_13.JUMPXEQKS:
-        case iris_1825i_13.CMPPROTO:
+function op_length (op) { return wide(op)?2:1 }
+function op_is_jump_d (op) {
+	switch (op) {
+		case Op.JUMP: case Op.JUMPIF: case Op.JUMPIFNOT: case Op.JUMPIFEQ:
+    case Op.JUMPIFLE: case Op.JUMPIFLT: case Op.JUMPIFNOTEQ: case Op.JUMPIFNOTLE:
+		case Op.JUMPIFNOTLT: case Op.FORNPREP: case Op.FORNLOOP: case Op.FORGPREP:
+    case Op.FORGLOOP: case Op.FORGPREP_INEXT: case Op.FORGPREP_NEXT: case Op.JUMPBACK:
+        case Op.JUMPXEQKNIL: case Op.JUMPXEQKB: case Op.JUMPXEQKN: case Op.JUMPXEQKS:
+        case Op.CMPPROTO:
       return true
         default: return false;
    }
 }
-function op_is_fast_call(iris_1825i_30) { return iris_1825i_30===iris_1825i_13.FASTCALL||iris_1825i_30===iris_1825i_13.FASTCALL1||iris_1825i_30===iris_1825i_13.FASTCALL2||iris_1825i_30===iris_1825i_13.FASTCALL2K||iris_1825i_30===iris_1825i_13.FASTCALL3||iris_1825i_30===iris_1825i_13.FASTPCALL }
-function jump_target(iris_1825i_35,iris_1825i_36) {
-	const iris_1825i_37=iris_1825i_35[iris_1825i_36], iris_1825i_30=i_op(iris_1825i_37)
-   if (op_is_jump_d(iris_1825i_30)) return iris_1825i_36+i_d(iris_1825i_37)+1;
-	if (op_is_fast_call(iris_1825i_30)) return iris_1825i_36+i_c(iris_1825i_37)+2;
-    if (iris_1825i_30===iris_1825i_13.JUMPX) return iris_1825i_36+i_e(iris_1825i_37)+1
-    if (iris_1825i_30===iris_1825i_13.LOADB&&i_c(iris_1825i_37)) return iris_1825i_36+i_c(iris_1825i_37)+1
+function op_is_fast_call(op) { return op===Op.FASTCALL||op===Op.FASTCALL1||op===Op.FASTCALL2||op===Op.FASTCALL2K||op===Op.FASTCALL3||op===Op.FASTPCALL }
+function jump_target(code,pc) {
+	const insn=code[pc], op=i_op(insn)
+   if (op_is_jump_d(op)) return pc+i_d(insn)+1;
+	if (op_is_fast_call(op)) return pc+i_c(insn)+2;
+    if (op===Op.JUMPX) return pc+i_e(insn)+1
+    if (op===Op.LOADB&&i_c(insn)) return pc+i_c(insn)+1
    return -1
 }
 
 
-const iris_1825i_38=3, iris_1825i_39=14, iris_1825i_40=100;
+const LBC_VERSION_MIN=3, LBC_VERSION_MAX=14, LBC_VERSION_CLASSES=100;
 
-class iris_1825i_41 {
-  constructor(iris_1825i_106) { this.data=iris_1825i_106; this.size=iris_1825i_106.length; this.offset=0 }
+class Reader {
+  constructor(data) { this.data=data; this.size=data.length; this.offset=0 }
    readU8() { return this.offset+1>this.size?null:this.data[this.offset++] }
 read_u32 () {
       if (this.offset+4>this.size) return null;
-    let iris_1825i_42=0;
-		iris_1825i_42|=this.data[this.offset++]; iris_1825i_42|=this.data[this.offset++]<<8;
-    iris_1825i_42|=this.data[this.offset++]<<16; iris_1825i_42|=this.data[this.offset++]<<24;
-    return iris_1825i_42>>>0;
+    let v=0;
+		v|=this.data[this.offset++]; v|=this.data[this.offset++]<<8;
+    v|=this.data[this.offset++]<<16; v|=this.data[this.offset++]<<24;
+    return v>>>0;
     }
 read_i32 () {
         if (this.offset+4>this.size) return null;
-		let iris_1825i_42=0;
-        iris_1825i_42|=this.data[this.offset++]; iris_1825i_42|=this.data[this.offset++]<<8
-        iris_1825i_42|=this.data[this.offset++]<<16; iris_1825i_42|=this.data[this.offset++]<<24;
-        return iris_1825i_42
+		let v=0;
+        v|=this.data[this.offset++]; v|=this.data[this.offset++]<<8
+        v|=this.data[this.offset++]<<16; v|=this.data[this.offset++]<<24;
+        return v
   }
 read_u64 () {
         if (this.offset+8>this.size) return null;
-      let iris_1825i_43=0
-    iris_1825i_43|=this.data[this.offset++]; iris_1825i_43|=this.data[this.offset++]<<8;
-      iris_1825i_43|=this.data[this.offset++]<<16; iris_1825i_43|=this.data[this.offset++]<<24
-      let iris_1825i_44=0
-      iris_1825i_44|=this.data[this.offset++]; iris_1825i_44|=this.data[this.offset++]<<8
-		iris_1825i_44|=this.data[this.offset++]<<16; iris_1825i_44|=this.data[this.offset++]<<24
-		return (iris_1825i_44*0x100000000+iris_1825i_43)>>>0;
+      let lo=0
+    lo|=this.data[this.offset++]; lo|=this.data[this.offset++]<<8;
+      lo|=this.data[this.offset++]<<16; lo|=this.data[this.offset++]<<24
+      let hi=0
+      hi|=this.data[this.offset++]; hi|=this.data[this.offset++]<<8
+		hi|=this.data[this.offset++]<<16; hi|=this.data[this.offset++]<<24
+		return (hi*0x100000000+lo)>>>0;
   }
 read_f32 () {
         if (this.offset+4>this.size) return null
-        const iris_1825i_45=new Uint8Array(4)
-    for (let iris_1825i_5=0;iris_1825i_5<4;iris_1825i_5++) iris_1825i_45[iris_1825i_5]=this.data[this.offset++]
-		return new DataView(iris_1825i_45.buffer).getFloat32(0,true);
+        const buf=new Uint8Array(4)
+    for (let i=0;i<4;i++) buf[i]=this.data[this.offset++]
+		return new DataView(buf.buffer).getFloat32(0,true);
 	}
 read_f64 () {
 		if (this.offset+8>this.size) return null;
-      const iris_1825i_45=new Uint8Array(8);
-      for (let iris_1825i_5=0;iris_1825i_5<8;iris_1825i_5++) iris_1825i_45[iris_1825i_5]=this.data[this.offset++]
-		return new DataView(iris_1825i_45.buffer).getFloat64(0,true)
+      const buf=new Uint8Array(8);
+      for (let i=0;i<8;i++) buf[i]=this.data[this.offset++]
+		return new DataView(buf.buffer).getFloat64(0,true)
   }
-  skip(iris_1825i_251) { if (this.offset+iris_1825i_251>this.size) return false; this.offset+=iris_1825i_251; return true }
-   take(iris_1825i_251) { if (!this.skip(iris_1825i_251)) return null; return this.data.subarray(this.offset-iris_1825i_251,this.offset) }
+  skip(n) { if (this.offset+n>this.size) return false; this.offset+=n; return true }
+   take(n) { if (!this.skip(n)) return null; return this.data.subarray(this.offset-n,this.offset) }
 varint () {
-      let iris_1825i_4=0
-    for (let iris_1825i_46 = 0; iris_1825i_46 < 35; iris_1825i_46+=7) {
-			const iris_1825i_47=this.readU8()
-			if (iris_1825i_47===null) return null
-      iris_1825i_4|=(iris_1825i_47&0x7f)<<iris_1825i_46
-         if ((iris_1825i_47&0x80)===0) return iris_1825i_4>>>0
+      let out=0
+    for (let s = 0; s < 35; s+=7) {
+			const b=this.readU8()
+			if (b===null) return null
+      out|=(b&0x7f)<<s
+         if ((b&0x80)===0) return out>>>0
       }
       return null;
     }
 varint64() {
-    let iris_1825i_4=0;
-		for (let iris_1825i_46 = 0; iris_1825i_46 < 70; iris_1825i_46+=7) {
-            const iris_1825i_47=this.readU8();
-			if (iris_1825i_47===null) return null
-            iris_1825i_4|=(iris_1825i_47&0x7f)<<iris_1825i_46
-            if ((iris_1825i_47&0x80)===0) return iris_1825i_4>>>0;
+    let out=0;
+		for (let s = 0; s < 70; s+=7) {
+            const b=this.readU8();
+			if (b===null) return null
+            out|=(b&0x7f)<<s
+            if ((b&0x80)===0) return out>>>0;
       }
 		return null
    }
@@ -174,529 +177,529 @@ varint64() {
 
 
 
-// first op is always PREPVARARGS, back the key out of it
-function find_shuffle_key(iris_1825i_49) {
-	if (iris_1825i_49.length===0) return 1;
-    const iris_1825i_50=iris_1825i_49[0]&0xff;
-   if (iris_1825i_50===iris_1825i_13.PREPVARARGS) return 1;
-   // key has to be odd so the multiply stays invertible
-for (let iris_1825i_51 = 1; iris_1825i_51 < 256; iris_1825i_51+=2) {
-		if (((iris_1825i_50*iris_1825i_51)&0xff)===iris_1825i_13.PREPVARARGS) return iris_1825i_51
+
+function find_shuffle_key(mainCode) {
+	if (mainCode.length===0) return 1;
+    const wire=mainCode[0]&0xff;
+   if (wire===Op.PREPVARARGS) return 1;
+   
+for (let key = 1; key < 256; key+=2) {
+		if (((wire*key)&0xff)===Op.PREPVARARGS) return key
   }
   return 1;
 }
-function unshuffle_code (iris_1825i_35,iris_1825i_51) {
-	if (iris_1825i_51===1) return;
-	for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_35.length; iris_1825i_5++) {
-      const iris_1825i_50=iris_1825i_35[iris_1825i_5]&0xff
-		iris_1825i_35[iris_1825i_5]=(iris_1825i_35[iris_1825i_5]&0xffffff00)|((iris_1825i_50*iris_1825i_51)&0xff)
-    if (wide(iris_1825i_35[iris_1825i_5]&0xff)&&iris_1825i_5+1<iris_1825i_35.length) iris_1825i_5++
+function unshuffle_code (code,key) {
+	if (key===1) return;
+	for (let i = 0; i < code.length; i++) {
+      const wire=code[i]&0xff
+		code[i]=(code[i]&0xffffff00)|((wire*key)&0xff)
+    if (wide(code[i]&0xff)&&i+1<code.length) i++
     }
 }
 
-function read_proto (iris_1825i_54,iris_1825i_55,iris_1825i_56,iris_1825i_57) {
-    const iris_1825i_58=iris_1825i_55.protos[iris_1825i_56]
-  iris_1825i_58.id=iris_1825i_56
+function read_proto (r,p,index,version) {
+    const proto=p.protos[index]
+  proto.id=index
 
-	if (iris_1825i_57>=12) {
-      const iris_1825i_59=iris_1825i_54.varint()
-      if (iris_1825i_59===null) return false;
-    const iris_1825i_60=iris_1825i_54.readU8(),iris_1825i_61=iris_1825i_54.readU8(),iris_1825i_62=iris_1825i_54.readU8(),iris_1825i_63=iris_1825i_54.readU8();
-		if (iris_1825i_60===null||iris_1825i_61===null||iris_1825i_62===null||iris_1825i_63===null) return false;
-    iris_1825i_58.maxstack=iris_1825i_60; iris_1825i_58.numparams=iris_1825i_61; iris_1825i_58.nups=iris_1825i_62; iris_1825i_58.is_vararg=iris_1825i_63
+	if (version>=12) {
+      const protoSize=r.varint()
+      if (protoSize===null) return false;
+    const maxstack=r.readU8(),numparams=r.readU8(),nups=r.readU8(),isVararg=r.readU8();
+		if (maxstack===null||numparams===null||nups===null||isVararg===null) return false;
+    proto.maxstack=maxstack; proto.numparams=numparams; proto.nups=nups; proto.is_vararg=isVararg
 	} else {
-        const iris_1825i_60=iris_1825i_54.readU8(),iris_1825i_61=iris_1825i_54.readU8(),iris_1825i_62=iris_1825i_54.readU8(),iris_1825i_63=iris_1825i_54.readU8()
-    if (iris_1825i_60===null||iris_1825i_61===null||iris_1825i_62===null||iris_1825i_63===null) return false;
-		iris_1825i_58.maxstack=iris_1825i_60; iris_1825i_58.numparams=iris_1825i_61; iris_1825i_58.nups=iris_1825i_62; iris_1825i_58.is_vararg=iris_1825i_63
+        const maxstack=r.readU8(),numparams=r.readU8(),nups=r.readU8(),isVararg=r.readU8()
+    if (maxstack===null||numparams===null||nups===null||isVararg===null) return false;
+		proto.maxstack=maxstack; proto.numparams=numparams; proto.nups=nups; proto.is_vararg=isVararg
   }
 
-  if (iris_1825i_57>=4) {
-    const iris_1825i_64=iris_1825i_54.readU8()
-    if (iris_1825i_64===null) return false;
-      iris_1825i_58.flags=iris_1825i_64;
-    const iris_1825i_65=iris_1825i_54.varint();
-    if (iris_1825i_65===null) return false
-		if (iris_1825i_65) { if (!iris_1825i_54.skip(iris_1825i_65)) return false }
+  if (version>=4) {
+    const flags=r.readU8()
+    if (flags===null) return false;
+      proto.flags=flags;
+    const typesize=r.varint();
+    if (typesize===null) return false
+		if (typesize) { if (!r.skip(typesize)) return false }
 	}
 
 
-	const iris_1825i_66=iris_1825i_54.varint();
-   if (iris_1825i_66===null) return false
-  iris_1825i_58.code=new Array(iris_1825i_66).fill(0);
-  for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_66; iris_1825i_5++) {
-    const iris_1825i_67=iris_1825i_54.read_u32()
-    if (iris_1825i_67===null) return false;
-      iris_1825i_58.code[iris_1825i_5]=iris_1825i_67>>>0
+	const sizecode=r.varint();
+   if (sizecode===null) return false
+  proto.code=new Array(sizecode).fill(0);
+  for (let i = 0; i < sizecode; i++) {
+    const c=r.read_u32()
+    if (c===null) return false;
+      proto.code[i]=c>>>0
   }
 
-  const iris_1825i_68=iris_1825i_54.varint()
-   if (iris_1825i_68===null) return false;
-  iris_1825i_58.k=new Array(iris_1825i_68);
-    for (let iris_1825i_69=0;iris_1825i_69<iris_1825i_68;iris_1825i_69++) iris_1825i_58.k[iris_1825i_69]={ kind:iris_1825i_14.Nil, boolean:false, number:0, importId:0, str:"", closureProto:-1, vec:[], table:[], integer:0 }
+  const sizek=r.varint()
+   if (sizek===null) return false;
+  proto.k=new Array(sizek);
+    for (let j=0;j<sizek;j++) proto.k[j]={ kind:ConstK.Nil, boolean:false, number:0, importId:0, str:"", closureProto:-1, vec:[], table:[], integer:0 }
 
-  for (let iris_1825i_69 = 0; iris_1825i_69 < iris_1825i_68; iris_1825i_69++) {
-    const iris_1825i_70=iris_1825i_54.readU8()
-    if (iris_1825i_70===null) return false
-      const iris_1825i_67=iris_1825i_58.k[iris_1825i_69]
-    switch (iris_1825i_70) {
-         case 0: iris_1825i_67.kind=iris_1825i_14.Nil; break;
-			case 1: { const iris_1825i_42=iris_1825i_54.readU8(); if (iris_1825i_42===null) return false; iris_1825i_67.kind=iris_1825i_14.Boolean; iris_1825i_67.boolean=iris_1825i_42!==0; break }
-      case 2: { const iris_1825i_71=iris_1825i_54.read_f64(); if (iris_1825i_71===null) return false; iris_1825i_67.kind=iris_1825i_14.Number; iris_1825i_67.number=iris_1825i_71; break }
+  for (let j = 0; j < sizek; j++) {
+    const tag=r.readU8()
+    if (tag===null) return false
+      const c=proto.k[j]
+    switch (tag) {
+         case 0: c.kind=ConstK.Nil; break;
+			case 1: { const v=r.readU8(); if (v===null) return false; c.kind=ConstK.Boolean; c.boolean=v!==0; break }
+      case 2: { const num=r.read_f64(); if (num===null) return false; c.kind=ConstK.Number; c.number=num; break }
       case 3: {
-            const iris_1825i_72=iris_1825i_54.varint();
-				if (iris_1825i_72===null) return false;
-                if (iris_1825i_72-1<0||iris_1825i_72-1>=iris_1825i_55.strings.length) return false;
-				iris_1825i_67.kind=iris_1825i_14.String; iris_1825i_67.str=iris_1825i_55.strings[iris_1825i_72-1]
+            const id=r.varint();
+				if (id===null) return false;
+                if (id-1<0||id-1>=p.strings.length) return false;
+				c.kind=ConstK.String; c.str=p.strings[id-1]
         break
       }
-			case 4: { const iris_1825i_72=iris_1825i_54.read_u32(); if (iris_1825i_72===null) return false; iris_1825i_67.kind=iris_1825i_14.Import; iris_1825i_67.importId=iris_1825i_72>>>0; break }
+			case 4: { const id=r.read_u32(); if (id===null) return false; c.kind=ConstK.Import; c.importId=id>>>0; break }
       case 5: {
-        const iris_1825i_73=iris_1825i_54.varint();
-				if (iris_1825i_73===null) return false
-				iris_1825i_67.kind=iris_1825i_14.Table
-        for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_73; iris_1825i_5++) {
-                    const iris_1825i_51=iris_1825i_54.varint();
-          if (iris_1825i_51===null) return false;
-          iris_1825i_67.table.push({ key:iris_1825i_51|0, value:-1 })
+        const keys=r.varint();
+				if (keys===null) return false
+				c.kind=ConstK.Table
+        for (let i = 0; i < keys; i++) {
+                    const key=r.varint();
+          if (key===null) return false;
+          c.table.push({ key:key|0, value:-1 })
         }
 				break;
 			}
 			case 6: {
-        const iris_1825i_74=iris_1825i_54.varint()
-				if (iris_1825i_74===null) return false;
-        if (iris_1825i_74>=iris_1825i_55.protos.length) return false
-        iris_1825i_67.kind=iris_1825i_14.Closure; iris_1825i_67.closureProto=iris_1825i_74|0;
+        const fid=r.varint()
+				if (fid===null) return false;
+        if (fid>=p.protos.length) return false
+        c.kind=ConstK.Closure; c.closureProto=fid|0;
         break;
       }
       case 7: {
-				const iris_1825i_75=iris_1825i_54.read_f32(),iris_1825i_76=iris_1825i_54.read_f32(),iris_1825i_77=iris_1825i_54.read_f32(),iris_1825i_78=iris_1825i_54.read_f32()
-            if (iris_1825i_75===null||iris_1825i_76===null||iris_1825i_77===null||iris_1825i_78===null) return false
-                iris_1825i_67.kind=iris_1825i_14.Vector; iris_1825i_67.vec=[iris_1825i_75,iris_1825i_76,iris_1825i_77]
+				const x=r.read_f32(),y=r.read_f32(),z=r.read_f32(),w=r.read_f32()
+            if (x===null||y===null||z===null||w===null) return false
+                c.kind=ConstK.Vector; c.vec=[x,y,z]
         break;
 			}
             case 8: {
-        const iris_1825i_73=iris_1825i_54.varint();
-        if (iris_1825i_73===null) return false;
-				iris_1825i_67.kind=iris_1825i_14.TableWithConstants
-        for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_73; iris_1825i_5++) {
-               const iris_1825i_51=iris_1825i_54.varint(),iris_1825i_79=iris_1825i_54.read_i32()
-          if (iris_1825i_51===null||iris_1825i_79===null) return false
-                    iris_1825i_67.table.push({ key:iris_1825i_51|0, value:iris_1825i_79|0 });
+        const keys=r.varint();
+        if (keys===null) return false;
+				c.kind=ConstK.TableWithConstants
+        for (let i = 0; i < keys; i++) {
+               const key=r.varint(),value=r.read_i32()
+          if (key===null||value===null) return false
+                    c.table.push({ key:key|0, value:value|0 });
             }
         break
 			}
 			case 9: {
-				const iris_1825i_80=iris_1825i_54.readU8(),iris_1825i_81=iris_1825i_54.varint64()
-				if (iris_1825i_80===null||iris_1825i_81===null) return false;
-        iris_1825i_67.kind=iris_1825i_14.Integer
-				iris_1825i_67.integer=iris_1825i_80?(~iris_1825i_81+1)|0:iris_1825i_81|0;
+				const isNegative=r.readU8(),magnitude=r.varint64()
+				if (isNegative===null||magnitude===null) return false;
+        c.kind=ConstK.Integer
+				c.integer=isNegative?(~magnitude+1)|0:magnitude|0;
 				break
          }
          case 10: {
-        const iris_1825i_23=iris_1825i_54.varint(),iris_1825i_47=iris_1825i_54.varint(),iris_1825i_82=iris_1825i_54.varint()
-        if (iris_1825i_23===null||iris_1825i_47===null||iris_1825i_82===null) return false;
-				for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_82; iris_1825i_5++) { const iris_1825i_83=iris_1825i_54.varint(); if (iris_1825i_83===null) return false }
-				iris_1825i_67.kind=iris_1825i_14.ClassShape
+        const a=r.varint(),b=r.varint(),count=r.varint()
+        if (a===null||b===null||count===null) return false;
+				for (let i = 0; i < count; i++) { const mid=r.varint(); if (mid===null) return false }
+				c.kind=ConstK.ClassShape
         break;
 			}
             case 11: {
-        const iris_1825i_75=iris_1825i_54.read_f64(),iris_1825i_76=iris_1825i_54.read_f64(),iris_1825i_77=iris_1825i_54.read_f64(),iris_1825i_78=iris_1825i_54.read_f64();
-        if (iris_1825i_75===null||iris_1825i_76===null||iris_1825i_77===null||iris_1825i_78===null) return false
-				iris_1825i_67.kind=iris_1825i_14.VectorD; iris_1825i_67.vec=[iris_1825i_75,iris_1825i_76,iris_1825i_77]
+        const x=r.read_f64(),y=r.read_f64(),z=r.read_f64(),w=r.read_f64();
+        if (x===null||y===null||z===null||w===null) return false
+				c.kind=ConstK.VectorD; c.vec=[x,y,z]
 				break
 			}
          default: return false;
     }
 	}
 
-  const iris_1825i_84=iris_1825i_54.varint()
-  if (iris_1825i_84===null) return false;
-    iris_1825i_58.children=new Array(iris_1825i_84)
-  for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_84; iris_1825i_5++) {
-      const iris_1825i_74=iris_1825i_54.varint()
-		if (iris_1825i_74===null) return false
-    if (iris_1825i_74>=iris_1825i_55.protos.length) return false
-    iris_1825i_58.children[iris_1825i_5]=iris_1825i_74>>>0
+  const sizep=r.varint()
+  if (sizep===null) return false;
+    proto.children=new Array(sizep)
+  for (let i = 0; i < sizep; i++) {
+      const fid=r.varint()
+		if (fid===null) return false
+    if (fid>=p.protos.length) return false
+    proto.children[i]=fid>>>0
   }
 
-   const iris_1825i_85=iris_1825i_54.varint();
-  if (iris_1825i_85===null) return false
-	iris_1825i_58.linedefined=iris_1825i_85|0
+   const linedefined=r.varint();
+  if (linedefined===null) return false
+	proto.linedefined=linedefined|0
 
     {
-      const iris_1825i_86=iris_1825i_54.varint();
-      if (iris_1825i_86===null) return false;
-      const iris_1825i_46=iris_1825i_55.strings[iris_1825i_86-1]
-    if (iris_1825i_46) iris_1825i_58.debugname=iris_1825i_46;
+      const nameid=r.varint();
+      if (nameid===null) return false;
+      const s=p.strings[nameid-1]
+    if (s) proto.debugname=s;
 	}
 
-    const iris_1825i_87=iris_1825i_54.readU8();
-   if (iris_1825i_87===null) return false;
-  if (iris_1825i_87) {
-		const iris_1825i_88=iris_1825i_54.readU8()
-		if (iris_1825i_88===null) return false
-      const iris_1825i_12=new Array(iris_1825i_66)
-      for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_66; iris_1825i_5++) {
-            const iris_1825i_47=iris_1825i_54.readU8();
-            if (iris_1825i_47===null) return false
-      iris_1825i_12[iris_1825i_5]=iris_1825i_47;
+    const lineinfo=r.readU8();
+   if (lineinfo===null) return false;
+  if (lineinfo) {
+		const linegaplog2=r.readU8()
+		if (linegaplog2===null) return false
+      const bytes=new Array(sizecode)
+      for (let i = 0; i < sizecode; i++) {
+            const b=r.readU8();
+            if (b===null) return false
+      bytes[i]=b;
     }
-    const iris_1825i_89=((iris_1825i_66-1)>>iris_1825i_88)+1
-    const iris_1825i_90=new Array(iris_1825i_89)
-		for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_89; iris_1825i_5++) {
-			const iris_1825i_42=iris_1825i_54.read_i32()
-      if (iris_1825i_42===null) return false;
-			iris_1825i_90[iris_1825i_5]=iris_1825i_42
+    const intervals=((sizecode-1)>>linegaplog2)+1
+    const abs=new Array(intervals)
+		for (let i = 0; i < intervals; i++) {
+			const v=r.read_i32()
+      if (v===null) return false;
+			abs[i]=v
       }
-      iris_1825i_58.lineinfo=new Array(iris_1825i_66).fill(-1);
-      let iris_1825i_91=0, iris_1825i_69=0
-      for (let iris_1825i_92 = 0; iris_1825i_92 < iris_1825i_89&&iris_1825i_69 < iris_1825i_66; iris_1825i_92++) {
-            iris_1825i_91+=iris_1825i_90[iris_1825i_92]
-      const iris_1825i_93=Math.min(iris_1825i_66,(iris_1825i_92+1)<<iris_1825i_88);
-			let iris_1825i_94=0
-			for (;iris_1825i_69<iris_1825i_93;iris_1825i_69++) {
-            iris_1825i_94+=iris_1825i_12[iris_1825i_69]
-				iris_1825i_58.lineinfo[iris_1825i_69]=iris_1825i_91+iris_1825i_94;
+      proto.lineinfo=new Array(sizecode).fill(-1);
+      let groupLine=0, j=0
+      for (let group = 0; group < intervals&&j < sizecode; group++) {
+            groupLine+=abs[group]
+      const groupEnd=Math.min(sizecode,(group+1)<<linegaplog2);
+			let running=0
+			for (;j<groupEnd;j++) {
+            running+=bytes[j]
+				proto.lineinfo[j]=groupLine+running;
       }
 		}
   }
 
 
-	const iris_1825i_95=iris_1825i_54.readU8()
-  if (iris_1825i_95===null) return false;
-  if (iris_1825i_95) {
-    const iris_1825i_96=iris_1825i_54.varint()
-    if (iris_1825i_96===null) return false
-    iris_1825i_58.locvars=[]
-        for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_96; iris_1825i_5++) {
-			const iris_1825i_86=iris_1825i_54.varint(),iris_1825i_97=iris_1825i_54.varint(),iris_1825i_98=iris_1825i_54.varint(),iris_1825i_99=iris_1825i_54.readU8();
-      if (iris_1825i_86===null||iris_1825i_97===null||iris_1825i_98===null||iris_1825i_99===null) return false;
-			const iris_1825i_100={ name:'', startpc:iris_1825i_97|0, endpc:iris_1825i_98|0, reg: iris_1825i_99 }
-			const iris_1825i_46=iris_1825i_55.strings[iris_1825i_86-1]
-         if (iris_1825i_46) iris_1825i_100.name=iris_1825i_46;
-			iris_1825i_58.locvars.push(iris_1825i_100)
+	const debuginfo=r.readU8()
+  if (debuginfo===null) return false;
+  if (debuginfo) {
+    const sizelocvars=r.varint()
+    if (sizelocvars===null) return false
+    proto.locvars=[]
+        for (let i = 0; i < sizelocvars; i++) {
+			const nameid=r.varint(),start=r.varint(),end=r.varint(),reg=r.readU8();
+      if (nameid===null||start===null||end===null||reg===null) return false;
+			const lv={ name:'', startpc:start|0, endpc:end|0, reg }
+			const s=p.strings[nameid-1]
+         if (s) lv.name=s;
+			proto.locvars.push(lv)
       }
-    const iris_1825i_101=iris_1825i_54.varint();
-		if (iris_1825i_101===null) return false
-    iris_1825i_58.upnames=[]
-    for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_101; iris_1825i_5++) {
-         const iris_1825i_86=iris_1825i_54.varint()
-			if (iris_1825i_86===null) return false
-         iris_1825i_58.upnames.push(iris_1825i_55.strings[iris_1825i_86-1]||"");
+    const sizeupvalues=r.varint();
+		if (sizeupvalues===null) return false
+    proto.upnames=[]
+    for (let i = 0; i < sizeupvalues; i++) {
+         const nameid=r.varint()
+			if (nameid===null) return false
+         proto.upnames.push(p.strings[nameid-1]||"");
     }
     }
 
-	if (iris_1825i_57>=11) {
-    const iris_1825i_102=iris_1825i_54.varint();
-    if (iris_1825i_102===null) return false;
-        for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_102; iris_1825i_5++) {
-			const iris_1825i_103=iris_1825i_54.readU8(),iris_1825i_36=iris_1825i_54.varint();
-      if (iris_1825i_103===null||iris_1825i_36===null) return false;
+	if (version>=11) {
+    const fbsize=r.varint();
+    if (fbsize===null) return false;
+        for (let i = 0; i < fbsize; i++) {
+			const slottype=r.readU8(),pc=r.varint();
+      if (slottype===null||pc===null) return false;
       }
 	}
 
 
-   if (iris_1825i_57>=12) {
-		if ((iris_1825i_58.flags&(1<<3))!==0) {
-         const iris_1825i_104=iris_1825i_54.varint64();
-            if (iris_1825i_104===null) return false
+   if (version>=12) {
+		if ((proto.flags&(1<<3))!==0) {
+         const cost=r.varint64();
+            if (cost===null) return false
     }
   }
 
     return true
 }
 
-function read_bytes (iris_1825i_106) {
-  const iris_1825i_4={ strings:[], protos:[], main:0, encodingKey:1, version:0, typeversion:0 }
-	const iris_1825i_54=new iris_1825i_41(iris_1825i_106);
+function read_bytes (data) {
+  const out={ strings:[], protos:[], main:0, encodingKey:1, version:0, typeversion:0 }
+	const r=new Reader(data);
 
-  const iris_1825i_107=iris_1825i_54.readU8();
-  if (iris_1825i_107===null) throw new Error("bytecode is too small to be valid")
-    const iris_1825i_57=iris_1825i_107>>>0;
-	iris_1825i_4.version=iris_1825i_57;
+  const versionRaw=r.readU8();
+  if (versionRaw===null) throw new Error("bytecode is too small to be valid")
+    const version=versionRaw>>>0;
+	out.version=version;
 
 
-  if (iris_1825i_57===0) {
-        let iris_1825i_108='failed to load bytecode';
-		if (iris_1825i_54.offset<iris_1825i_106.length) iris_1825i_108=iris_1825i_11(iris_1825i_106.subarray(iris_1825i_54.offset))
-    throw new Error(iris_1825i_108)
+  if (version===0) {
+        let msg='failed to load bytecode';
+		if (r.offset<data.length) msg=bytes_to_str(data.subarray(r.offset))
+    throw new Error(msg)
    }
-  if ((iris_1825i_57<iris_1825i_38||iris_1825i_57>iris_1825i_39)&&iris_1825i_57!==iris_1825i_40)
-      throw new Error('bytecode version mismatch (expected ['+iris_1825i_38+".."+iris_1825i_39+'], got '+iris_1825i_57+')');
+  if ((version<LBC_VERSION_MIN||version>LBC_VERSION_MAX)&&version!==LBC_VERSION_CLASSES)
+      throw new Error('bytecode version mismatch (expected ['+LBC_VERSION_MIN+".."+LBC_VERSION_MAX+'], got '+version+')');
 
-  let iris_1825i_109=0
-	if (iris_1825i_57>=4) {
-        const iris_1825i_110=iris_1825i_54.readU8();
-      if (iris_1825i_110===null) throw new Error("unexpected end of bytecode")
-		iris_1825i_109=iris_1825i_110>>>0;
-        iris_1825i_4.typeversion=iris_1825i_109
-    if (iris_1825i_109<1||iris_1825i_109>3)
-      throw new Error('bytecode type info version mismatch (expected [1..3], got '+iris_1825i_109+")")
+  let typesversion=0
+	if (version>=4) {
+        const tv=r.readU8();
+      if (tv===null) throw new Error("unexpected end of bytecode")
+		typesversion=tv>>>0;
+        out.typeversion=typesversion
+    if (typesversion<1||typesversion>3)
+      throw new Error('bytecode type info version mismatch (expected [1..3], got '+typesversion+")")
 	}
 
 
-	const iris_1825i_111=iris_1825i_54.varint()
-    if (iris_1825i_111===null) throw new Error('unexpected end of bytecode reading string count')
-   iris_1825i_4.strings=new Array(iris_1825i_111)
-	for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_111; iris_1825i_5++) {
-      const iris_1825i_112=iris_1825i_54.varint()
-		if (iris_1825i_112===null) throw new Error('unexpected end of bytecode reading string length');
-    const iris_1825i_12=iris_1825i_54.take(iris_1825i_112)
-    if (iris_1825i_12===null) throw new Error('unexpected end of bytecode reading string data');
-      iris_1825i_4.strings[iris_1825i_5]=iris_1825i_11(iris_1825i_12)
+	const stringCount=r.varint()
+    if (stringCount===null) throw new Error('unexpected end of bytecode reading string count')
+   out.strings=new Array(stringCount)
+	for (let i = 0; i < stringCount; i++) {
+      const length=r.varint()
+		if (length===null) throw new Error('unexpected end of bytecode reading string length');
+    const bytes=r.take(length)
+    if (bytes===null) throw new Error('unexpected end of bytecode reading string data');
+      out.strings[i]=bytes_to_str(bytes)
 	}
 
-  if (iris_1825i_109===3) {
-    let iris_1825i_56=iris_1825i_54.readU8();
-    if (iris_1825i_56===null) throw new Error('unexpected end of bytecode reading userdata remap');
-		while (iris_1825i_56!==0) {
-      const iris_1825i_86=iris_1825i_54.varint();
-			if (iris_1825i_86===null) throw new Error('unexpected end of bytecode reading userdata remap name')
-			if (iris_1825i_86===0||iris_1825i_86>iris_1825i_4.strings.length) throw new Error('invalid string reference in userdata remap table');
-			iris_1825i_56=iris_1825i_54.readU8();
-      if (iris_1825i_56===null) throw new Error("unexpected end of bytecode reading userdata remap index");
+  if (typesversion===3) {
+    let index=r.readU8();
+    if (index===null) throw new Error('unexpected end of bytecode reading userdata remap');
+		while (index!==0) {
+      const nameid=r.varint();
+			if (nameid===null) throw new Error('unexpected end of bytecode reading userdata remap name')
+			if (nameid===0||nameid>out.strings.length) throw new Error('invalid string reference in userdata remap table');
+			index=r.readU8();
+      if (index===null) throw new Error("unexpected end of bytecode reading userdata remap index");
       }
   }
 
-	const iris_1825i_113=iris_1825i_54.varint();
-    if (iris_1825i_113===null) throw new Error('unexpected end of bytecode reading proto count');
-   iris_1825i_4.protos=new Array(iris_1825i_113).fill(null).map(()=>({
+	const protoCount=r.varint();
+    if (protoCount===null) throw new Error('unexpected end of bytecode reading proto count');
+   out.protos=new Array(protoCount).fill(null).map(()=>({
     id:0,maxstack:0,numparams:0,nups:0,is_vararg:0,flags:0,code:new Array(0),k:[],
     children:[],lineinfo:[],linedefined:0,debugname:'',source:'',locvars:[],upnames:[],
   }));
 
-  for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_113; iris_1825i_5++) {
-		if (!read_proto(iris_1825i_54,iris_1825i_4,iris_1825i_5,iris_1825i_57)) {
-			throw new Error('failed to parse proto #'+iris_1825i_5);
+  for (let i = 0; i < protoCount; i++) {
+		if (!read_proto(r,out,i,version)) {
+			throw new Error('failed to parse proto #'+i);
 		}
 	}
 
-  const iris_1825i_114=iris_1825i_54.varint();
-  if (iris_1825i_114===null) throw new Error("unexpected end of bytecode reading main proto id")
-    if (iris_1825i_114>=iris_1825i_4.protos.length) throw new Error('invalid main proto id')
-   iris_1825i_4.main=iris_1825i_114|0;
+  const mainid=r.varint();
+  if (mainid===null) throw new Error("unexpected end of bytecode reading main proto id")
+    if (mainid>=out.protos.length) throw new Error('invalid main proto id')
+   out.main=mainid|0;
 
-	const iris_1825i_51=find_shuffle_key(iris_1825i_4.protos[iris_1825i_4.main].code)
-	if (iris_1825i_51!==1) {
-        for (const iris_1825i_58 of iris_1825i_4.protos) unshuffle_code(iris_1825i_58.code,iris_1825i_51)
+	const key=find_shuffle_key(out.protos[out.main].code)
+	if (key!==1) {
+        for (const proto of out.protos) unshuffle_code(proto.code,key)
   }
-  iris_1825i_4.encodingKey=iris_1825i_51|0
+  out.encodingKey=key|0
 
 
-	// v14 added FASTPCALL at 89 and pushed NEWCLASS to 90, remap old files
-if (iris_1825i_57>=iris_1825i_38&&iris_1825i_57<14) {
-		for (const iris_1825i_58 of iris_1825i_4.protos) {
-         for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_58.code.length; iris_1825i_5++) {
-				if ((iris_1825i_58.code[iris_1825i_5]&0xff)===89)
-               iris_1825i_58.code[iris_1825i_5]=(iris_1825i_58.code[iris_1825i_5]&0xffffff00)|iris_1825i_13.NEWCLASS
+	
+if (version>=LBC_VERSION_MIN&&version<14) {
+		for (const proto of out.protos) {
+         for (let i = 0; i < proto.code.length; i++) {
+				if ((proto.code[i]&0xff)===89)
+               proto.code[i]=(proto.code[i]&0xffffff00)|Op.NEWCLASS
 			}
     }
     }
 
-   return iris_1825i_4
+   return out
 }
 
 
-function d_fmt_number(iris_1825i_42) {
-	if (Number.isNaN(iris_1825i_42)) return '(0/0)'
-    if (!Number.isFinite(iris_1825i_42)) return iris_1825i_42<0?'-(1/0)':'(1/0)';
-  if (Math.floor(iris_1825i_42)===iris_1825i_42&&Math.abs(iris_1825i_42)<1e15) return String(Math.trunc(iris_1825i_42))
-  let iris_1825i_46=iris_1825i_42.toPrecision(10)
-    if (iris_1825i_46.indexOf('.')!==-1) {
-      while (iris_1825i_46.length>0&&iris_1825i_46[iris_1825i_46.length-1]==='0') iris_1825i_46=iris_1825i_46.slice(0,-1)
-        if (iris_1825i_46[iris_1825i_46.length-1]==='.') iris_1825i_46=iris_1825i_46.slice(0,-1);
+function d_fmt_number(v) {
+	if (Number.isNaN(v)) return '(0/0)'
+    if (!Number.isFinite(v)) return v<0?'-(1/0)':'(1/0)';
+  if (Math.floor(v)===v&&Math.abs(v)<1e15) return String(Math.trunc(v))
+  let s=v.toPrecision(10)
+    if (s.indexOf('.')!==-1) {
+      while (s.length>0&&s[s.length-1]==='0') s=s.slice(0,-1)
+        if (s[s.length-1]==='.') s=s.slice(0,-1);
     }
-  return iris_1825i_46===''?"0":iris_1825i_46
+  return s===''?"0":s
 }
-function d_esc_string (iris_1825i_46) {
-    let iris_1825i_4='"';
-   for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_46.length; iris_1825i_5++) {
-    const iris_1825i_67=iris_1825i_46.charCodeAt(iris_1825i_5)
-        if (iris_1825i_67===0x22) iris_1825i_4+='\\"';
-    else if (iris_1825i_67===0x5c) iris_1825i_4+="\\\\";
-		else if (iris_1825i_67===0x0a) iris_1825i_4+="\\n";
-		else if (iris_1825i_67===0x0d) iris_1825i_4+="\\r";
-    else if (iris_1825i_67===0x09) iris_1825i_4+="\\t"
-    else if (iris_1825i_67<32) iris_1825i_4+="\\"+iris_1825i_67
-    else iris_1825i_4+=iris_1825i_46[iris_1825i_5]
+function d_esc_string (s) {
+    let out='"';
+   for (let i = 0; i < s.length; i++) {
+    const c=s.charCodeAt(i)
+        if (c===0x22) out+='\\"';
+    else if (c===0x5c) out+="\\\\";
+		else if (c===0x0a) out+="\\n";
+		else if (c===0x0d) out+="\\r";
+    else if (c===0x09) out+="\\t"
+    else if (c<32) out+="\\"+c
+    else out+=s[i]
 	}
-   return iris_1825i_4+'"'
+   return out+'"'
 }
-function import_path (iris_1825i_55,iris_1825i_72) {
-   const iris_1825i_82=iris_1825i_72>>>30
-	const iris_1825i_118=(iris_1825i_119)=>{ if (iris_1825i_119<0||iris_1825i_119>=iris_1825i_55.k.length||iris_1825i_55.k[iris_1825i_119].kind!==iris_1825i_14.String) return "?"; return iris_1825i_55.k[iris_1825i_119].str }
-  let iris_1825i_120=iris_1825i_118((iris_1825i_72>>>20)&1023)
-  if (iris_1825i_82>=2) iris_1825i_120+='.'+iris_1825i_118((iris_1825i_72>>>10)&1023);
-    if (iris_1825i_82>=3) iris_1825i_120+='.'+iris_1825i_118(iris_1825i_72&1023)
-	return iris_1825i_120;
+function import_path (p,id) {
+   const count=id>>>30
+	const name=(idx)=>{ if (idx<0||idx>=p.k.length||p.k[idx].kind!==ConstK.String) return "?"; return p.k[idx].str }
+  let path=name((id>>>20)&1023)
+  if (count>=2) path+='.'+name((id>>>10)&1023);
+    if (count>=3) path+='.'+name(id&1023)
+	return path;
 }
 
-function render_const(iris_1825i_122,iris_1825i_55,iris_1825i_67) {
-	switch (iris_1825i_67.kind) {
-    case iris_1825i_14.Nil: iris_1825i_122.push('nil'); break;
-      case iris_1825i_14.Boolean: iris_1825i_122.push(iris_1825i_67.boolean?'true':'false'); break
-    case iris_1825i_14.Number: iris_1825i_122.push(d_fmt_number(iris_1825i_67.number)); break;
-      case iris_1825i_14.Integer: iris_1825i_122.push(String(iris_1825i_67.integer)); break;
-        case iris_1825i_14.String: iris_1825i_122.push(d_esc_string(iris_1825i_67.str)); break
-		case iris_1825i_14.Import: iris_1825i_122.push('@import:'+iris_1825i_55.debugname+':'+import_path(iris_1825i_55,iris_1825i_67.importId)); break
-		case iris_1825i_14.Table:
-        case iris_1825i_14.TableWithConstants: {
-			iris_1825i_122.push('{ ');
-			for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_67.table.length; iris_1825i_5++) {
-				if (iris_1825i_5) iris_1825i_122.push(', ')
-            const iris_1825i_123=iris_1825i_67.table[iris_1825i_5]
-                if (iris_1825i_123.key>=0&&iris_1825i_123.key<iris_1825i_55.k.length) render_const(iris_1825i_122,iris_1825i_55,iris_1825i_55.k[iris_1825i_123.key]); else iris_1825i_122.push("?key")
-        iris_1825i_122.push(' = ');
-            if (iris_1825i_123.value>=0) { if (iris_1825i_123.value<iris_1825i_55.k.length) render_const(iris_1825i_122,iris_1825i_55,iris_1825i_55.k[iris_1825i_123.value]); else iris_1825i_122.push('?') } else iris_1825i_122.push("0");
+function render_const(os,p,c) {
+	switch (c.kind) {
+    case ConstK.Nil: os.push('nil'); break;
+      case ConstK.Boolean: os.push(c.boolean?'true':'false'); break
+    case ConstK.Number: os.push(d_fmt_number(c.number)); break;
+      case ConstK.Integer: os.push(String(c.integer)); break;
+        case ConstK.String: os.push(d_esc_string(c.str)); break
+		case ConstK.Import: os.push('@import:'+p.debugname+':'+import_path(p,c.importId)); break
+		case ConstK.Table:
+        case ConstK.TableWithConstants: {
+			os.push('{ ');
+			for (let i = 0; i < c.table.length; i++) {
+				if (i) os.push(', ')
+            const e=c.table[i]
+                if (e.key>=0&&e.key<p.k.length) render_const(os,p,p.k[e.key]); else os.push("?key")
+        os.push(' = ');
+            if (e.value>=0) { if (e.value<p.k.length) render_const(os,p,p.k[e.value]); else os.push('?') } else os.push("0");
       }
-            iris_1825i_122.push(" }");
+            os.push(" }");
       break;
       }
-    case iris_1825i_14.Closure: iris_1825i_122.push("@closure["+iris_1825i_67.closureProto+"]"); break
-        case iris_1825i_14.Vector:
-		case iris_1825i_14.VectorD: iris_1825i_122.push('vector('+iris_1825i_67.vec[0]+", "+iris_1825i_67.vec[1]+", "+iris_1825i_67.vec[2]+")"); break;
-      default: iris_1825i_122.push('?'); break
+    case ConstK.Closure: os.push("@closure["+c.closureProto+"]"); break
+        case ConstK.Vector:
+		case ConstK.VectorD: os.push('vector('+c.vec[0]+", "+c.vec[1]+", "+c.vec[2]+")"); break;
+      default: os.push('?'); break
 	}
 }
-function const_text (iris_1825i_55,iris_1825i_125) {
-  if (iris_1825i_125<0||iris_1825i_125>=iris_1825i_55.k.length) return '?';
-  const iris_1825i_122=[]
-  render_const(iris_1825i_122,iris_1825i_55,iris_1825i_55.k[iris_1825i_125])
-  return iris_1825i_122.join('')
+function const_text (p,k) {
+  if (k<0||k>=p.k.length) return '?';
+  const os=[]
+  render_const(os,p,p.k[k])
+  return os.join('')
 }
-function dump_proto (iris_1825i_4,iris_1825i_127,iris_1825i_128) {
-   const iris_1825i_55=iris_1825i_127.protos[iris_1825i_128]
-    iris_1825i_4.push("== proto "+iris_1825i_128+' "'+iris_1825i_55.debugname+'" line '+iris_1825i_55.linedefined+"\n");
-  iris_1825i_4.push('-- maxstack='+iris_1825i_55.maxstack+' params='+iris_1825i_55.numparams+' nups='+iris_1825i_55.nups+" vararg="+iris_1825i_55.is_vararg+' flags='+iris_1825i_55.flags+"\n")
-  iris_1825i_4.push('-- upvalue names: ');
-	for (let iris_1825i_129 = 0; iris_1825i_129 < iris_1825i_55.upnames.length; iris_1825i_129++) {
-		if (iris_1825i_129) iris_1825i_4.push(', ')
-      iris_1825i_4.push('"'+iris_1825i_55.upnames[iris_1825i_129]+'"');
+function dump_proto (out,program,pi) {
+   const p=program.protos[pi]
+    out.push("== proto "+pi+' "'+p.debugname+'" line '+p.linedefined+"\n");
+  out.push('-- maxstack='+p.maxstack+' params='+p.numparams+' nups='+p.nups+" vararg="+p.is_vararg+' flags='+p.flags+"\n")
+  out.push('-- upvalue names: ');
+	for (let u = 0; u < p.upnames.length; u++) {
+		if (u) out.push(', ')
+      out.push('"'+p.upnames[u]+'"');
 	}
-   iris_1825i_4.push("\n")
-	iris_1825i_4.push("-- constants:\n")
-    for (let iris_1825i_125 = 0; iris_1825i_125 < iris_1825i_55.k.length; iris_1825i_125++) {
-    const iris_1825i_122=[]
-		render_const(iris_1825i_122,iris_1825i_55,iris_1825i_55.k[iris_1825i_125])
-      iris_1825i_4.push('  ['+iris_1825i_125+"] "+iris_1825i_122.join('')+"\n");
+   out.push("\n")
+	out.push("-- constants:\n")
+    for (let k = 0; k < p.k.length; k++) {
+    const os=[]
+		render_const(os,p,p.k[k])
+      out.push('  ['+k+"] "+os.join('')+"\n");
   }
-   iris_1825i_4.push("\n")
-  iris_1825i_4.push("  idx     line  insn\n");
-   let iris_1825i_5=0;
-	while (iris_1825i_5<iris_1825i_55.code.length) {
-    const iris_1825i_37=iris_1825i_55.code[iris_1825i_5], iris_1825i_30=i_op(iris_1825i_37);
-      const iris_1825i_130=[]
-      iris_1825i_130.push('  '+(iris_1825i_37>>>0).toString(16)+"   ")
-        iris_1825i_130.push(iris_1825i_5+"      ")
-    iris_1825i_130.push((iris_1825i_55.lineinfo.length===0||iris_1825i_55.lineinfo[iris_1825i_5]<0)?"-":String(iris_1825i_55.lineinfo[iris_1825i_5]));
-    iris_1825i_130.push('     '+op_name(iris_1825i_30));
-        const iris_1825i_131=()=>iris_1825i_130.push(" A="+i_a(iris_1825i_37))
-      const iris_1825i_132=()=>iris_1825i_130.push(" B="+i_b(iris_1825i_37)+' C='+i_c(iris_1825i_37))
-    switch (iris_1825i_30) {
-            case iris_1825i_13.NOP: case iris_1825i_13.BREAK: case iris_1825i_13.NATIVECALL: case iris_1825i_13.COVERAGE:
-				iris_1825i_130.push(" D="+i_e(iris_1825i_37)); break
-      case iris_1825i_13.LOADNIL: case iris_1825i_13.LOADB: case iris_1825i_13.MOVE: case iris_1825i_13.GETGLOBAL:
-      case iris_1825i_13.GETUPVAL: case iris_1825i_13.SETUPVAL: case iris_1825i_13.CLOSEUPVALS: case iris_1825i_13.NEWCLOSURE:
-			case iris_1825i_13.RETURN: case iris_1825i_13.JUMP: case iris_1825i_13.JUMPBACK: case iris_1825i_13.JUMPIF: case iris_1825i_13.JUMPIFNOT:
-      case iris_1825i_13.NOT: case iris_1825i_13.MINUS: case iris_1825i_13.LENGTH: case iris_1825i_13.DUPTABLE: case iris_1825i_13.LOADKX:
-      case iris_1825i_13.JUMPX: case iris_1825i_13.PREPVARARGS: case iris_1825i_13.GETVARARGS: case iris_1825i_13.SETLIST:
-      case iris_1825i_13.NEWTABLE: case iris_1825i_13.FORNPREP: case iris_1825i_13.FORNLOOP: case iris_1825i_13.FORGPREP:
-         case iris_1825i_13.FORGPREP_INEXT: case iris_1825i_13.FORGPREP_NEXT: case iris_1825i_13.FORGLOOP:
-				iris_1825i_131(); break
-      case iris_1825i_13.GETTABLE: case iris_1825i_13.SETTABLE: case iris_1825i_13.GETTABLEN: case iris_1825i_13.SETTABLEN:
-			case iris_1825i_13.GETTABLEKS: case iris_1825i_13.SETTABLEKS: case iris_1825i_13.ADD: case iris_1825i_13.SUB: case iris_1825i_13.MUL:
-      case iris_1825i_13.DIV: case iris_1825i_13.MOD: case iris_1825i_13.POW: case iris_1825i_13.AND: case iris_1825i_13.OR: case iris_1825i_13.ADDK:
-         case iris_1825i_13.SUBK: case iris_1825i_13.MULK: case iris_1825i_13.DIVK: case iris_1825i_13.MODK: case iris_1825i_13.POWK: case iris_1825i_13.ANDK:
-      case iris_1825i_13.ORK: case iris_1825i_13.SUBRK: case iris_1825i_13.DIVRK: case iris_1825i_13.IDIV: case iris_1825i_13.IDIVK:
-      case iris_1825i_13.FASTPCALL:
-            iris_1825i_132(); break
-      case iris_1825i_13.CONCAT: iris_1825i_132(); break
-      case iris_1825i_13.SETGLOBAL: case iris_1825i_13.SETUPVAL: iris_1825i_130.push(" A="+i_a(iris_1825i_37)+" B="+i_b(iris_1825i_37)); break
-			case iris_1825i_13.NAMECALL: iris_1825i_130.push(' A='+i_a(iris_1825i_37)+' B='+i_b(iris_1825i_37)+' C='+i_c(iris_1825i_37)); break;
-			case iris_1825i_13.CALL: case iris_1825i_13.CALLFB:
-        iris_1825i_130.push(" A="+i_a(iris_1825i_37)+' B='+i_b(iris_1825i_37)+' C='+i_c(iris_1825i_37)); break;
-         case iris_1825i_13.LOADN: iris_1825i_130.push(" D="+i_d(iris_1825i_37)); break
-			case iris_1825i_13.LOADK: iris_1825i_130.push(' D='+i_d(iris_1825i_37)+' (k'+const_text(iris_1825i_55,i_d(iris_1825i_37))+')'); break;
-      case iris_1825i_13.RETURN: iris_1825i_130.push(" A="+i_a(iris_1825i_37)+' B='+i_b(iris_1825i_37)); break
-      case iris_1825i_13.JUMP: case iris_1825i_13.JUMPBACK: case iris_1825i_13.JUMPIF: case iris_1825i_13.JUMPIFNOT:
-                iris_1825i_130.push(' A='+i_a(iris_1825i_37)+' D='+i_d(iris_1825i_37)); break
+   out.push("\n")
+  out.push("  idx     line  insn\n");
+   let i=0;
+	while (i<p.code.length) {
+    const insn=p.code[i], op=i_op(insn);
+      const line=[]
+      line.push('  '+(insn>>>0).toString(16)+"   ")
+        line.push(i+"      ")
+    line.push((p.lineinfo.length===0||p.lineinfo[i]<0)?"-":String(p.lineinfo[i]));
+    line.push('     '+op_name(op));
+        const push_ab=()=>line.push(" A="+i_a(insn))
+      const push_abc=()=>line.push(" B="+i_b(insn)+' C='+i_c(insn))
+    switch (op) {
+            case Op.NOP: case Op.BREAK: case Op.NATIVECALL: case Op.COVERAGE:
+				line.push(" D="+i_e(insn)); break
+      case Op.LOADNIL: case Op.LOADB: case Op.MOVE: case Op.GETGLOBAL:
+      case Op.GETUPVAL: case Op.SETUPVAL: case Op.CLOSEUPVALS: case Op.NEWCLOSURE:
+			case Op.RETURN: case Op.JUMP: case Op.JUMPBACK: case Op.JUMPIF: case Op.JUMPIFNOT:
+      case Op.NOT: case Op.MINUS: case Op.LENGTH: case Op.DUPTABLE: case Op.LOADKX:
+      case Op.JUMPX: case Op.PREPVARARGS: case Op.GETVARARGS: case Op.SETLIST:
+      case Op.NEWTABLE: case Op.FORNPREP: case Op.FORNLOOP: case Op.FORGPREP:
+         case Op.FORGPREP_INEXT: case Op.FORGPREP_NEXT: case Op.FORGLOOP:
+				push_ab(); break
+      case Op.GETTABLE: case Op.SETTABLE: case Op.GETTABLEN: case Op.SETTABLEN:
+			case Op.GETTABLEKS: case Op.SETTABLEKS: case Op.ADD: case Op.SUB: case Op.MUL:
+      case Op.DIV: case Op.MOD: case Op.POW: case Op.AND: case Op.OR: case Op.ADDK:
+         case Op.SUBK: case Op.MULK: case Op.DIVK: case Op.MODK: case Op.POWK: case Op.ANDK:
+      case Op.ORK: case Op.SUBRK: case Op.DIVRK: case Op.IDIV: case Op.IDIVK:
+      case Op.FASTPCALL:
+            push_abc(); break
+      case Op.CONCAT: push_abc(); break
+      case Op.SETGLOBAL: case Op.SETUPVAL: line.push(" A="+i_a(insn)+" B="+i_b(insn)); break
+			case Op.NAMECALL: line.push(' A='+i_a(insn)+' B='+i_b(insn)+' C='+i_c(insn)); break;
+			case Op.CALL: case Op.CALLFB:
+        line.push(" A="+i_a(insn)+' B='+i_b(insn)+' C='+i_c(insn)); break;
+         case Op.LOADN: line.push(" D="+i_d(insn)); break
+			case Op.LOADK: line.push(' D='+i_d(insn)+' (k'+const_text(p,i_d(insn))+')'); break;
+      case Op.RETURN: line.push(" A="+i_a(insn)+' B='+i_b(insn)); break
+      case Op.JUMP: case Op.JUMPBACK: case Op.JUMPIF: case Op.JUMPIFNOT:
+                line.push(' A='+i_a(insn)+' D='+i_d(insn)); break
 			default: break;
       }
-    const iris_1825i_133=jump_target(iris_1825i_55.code,iris_1825i_5)
-        if (iris_1825i_133>=0) iris_1825i_130.push(" -> "+iris_1825i_133)
-      if (wide(iris_1825i_30)&&iris_1825i_5+1<iris_1825i_55.code.length) {
-         const iris_1825i_134=iris_1825i_55.code[iris_1825i_5+1]
-      iris_1825i_130.push(' ; aux='+(iris_1825i_134>>>0).toString(16))
-         if (iris_1825i_30===iris_1825i_13.NEWTABLE) iris_1825i_130.push(' (hash'+i_c(iris_1825i_37)+', array '+iris_1825i_134+')');
-			if (iris_1825i_30===iris_1825i_13.SETLIST) iris_1825i_130.push(' (base '+iris_1825i_134+')');
-      if (iris_1825i_30===iris_1825i_13.FORGLOOP) iris_1825i_130.push(' (vars '+(iris_1825i_134&0xff)+((iris_1825i_134>>>31)?" ipairs":'')+')')
-      if (iris_1825i_30===iris_1825i_13.GETIMPORT) iris_1825i_130.push(' (import '+(iris_1825i_134>>>30)+': '+aux_a(iris_1825i_134)+','+aux_b(iris_1825i_134)+','+(iris_1825i_134&0x3ff)+' => '+import_path(iris_1825i_55,iris_1825i_134)+')')
-         if (iris_1825i_30===iris_1825i_13.JUMPIFEQ||iris_1825i_30===iris_1825i_13.JUMPIFLE||iris_1825i_30===iris_1825i_13.JUMPIFLT||
-        iris_1825i_30===iris_1825i_13.JUMPIFNOTEQ||iris_1825i_30===iris_1825i_13.JUMPIFNOTLE||iris_1825i_30===iris_1825i_13.JUMPIFNOTLT)
-                iris_1825i_130.push(" (aux reg "+(iris_1825i_134&0xff)+")")
-            if (iris_1825i_30===iris_1825i_13.GETTABLEKS||iris_1825i_30===iris_1825i_13.SETTABLEKS||iris_1825i_30===iris_1825i_13.NAMECALL||
-                iris_1825i_30===iris_1825i_13.GETGLOBAL||iris_1825i_30===iris_1825i_13.SETGLOBAL||iris_1825i_30===iris_1825i_13.LOADKX)
-				iris_1825i_130.push(" (k"+iris_1825i_134+" "+const_text(iris_1825i_55,iris_1825i_134)+')')
+    const tgt=jump_target(p.code,i)
+        if (tgt>=0) line.push(" -> "+tgt)
+      if (wide(op)&&i+1<p.code.length) {
+         const aux=p.code[i+1]
+      line.push(' ; aux='+(aux>>>0).toString(16))
+         if (op===Op.NEWTABLE) line.push(' (hash'+i_c(insn)+', array '+aux+')');
+			if (op===Op.SETLIST) line.push(' (base '+aux+')');
+      if (op===Op.FORGLOOP) line.push(' (vars '+(aux&0xff)+((aux>>>31)?" ipairs":'')+')')
+      if (op===Op.GETIMPORT) line.push(' (import '+(aux>>>30)+': '+aux_a(aux)+','+aux_b(aux)+','+(aux&0x3ff)+' => '+import_path(p,aux)+')')
+         if (op===Op.JUMPIFEQ||op===Op.JUMPIFLE||op===Op.JUMPIFLT||
+        op===Op.JUMPIFNOTEQ||op===Op.JUMPIFNOTLE||op===Op.JUMPIFNOTLT)
+                line.push(" (aux reg "+(aux&0xff)+")")
+            if (op===Op.GETTABLEKS||op===Op.SETTABLEKS||op===Op.NAMECALL||
+                op===Op.GETGLOBAL||op===Op.SETGLOBAL||op===Op.LOADKX)
+				line.push(" (k"+aux+" "+const_text(p,aux)+')')
 		}
-      iris_1825i_4.push(iris_1825i_130.join('')+"\n");
-      if (iris_1825i_30===iris_1825i_13.NEWCLOSURE&&i_d(iris_1825i_37)>=0&&i_d(iris_1825i_37)<iris_1825i_55.children.length) {
-      const iris_1825i_135=iris_1825i_127.protos[iris_1825i_55.children[i_d(iris_1825i_37)]]
-      for (let iris_1825i_129 = 0; iris_1825i_129 < iris_1825i_135.nups; iris_1825i_129++) {
-            iris_1825i_5++
-        if (iris_1825i_5>=iris_1825i_55.code.length) break;
-            const iris_1825i_136=iris_1825i_55.code[iris_1825i_5]
-        const iris_1825i_137=i_a(iris_1825i_136)===1?"REF":(i_a(iris_1825i_136)===2?'UPVAL':'VAL');
-				iris_1825i_4.push('  '+(iris_1825i_136>>>0).toString(16)+"   "+iris_1825i_5+'      -     CAPTURE '+iris_1825i_137+' B='+i_b(iris_1825i_136)+"\n");
+      out.push(line.join('')+"\n");
+      if (op===Op.NEWCLOSURE&&i_d(insn)>=0&&i_d(insn)<p.children.length) {
+      const child=program.protos[p.children[i_d(insn)]]
+      for (let u = 0; u < child.nups; u++) {
+            i++
+        if (i>=p.code.length) break;
+            const cap=p.code[i]
+        const kind=i_a(cap)===1?"REF":(i_a(cap)===2?'UPVAL':'VAL');
+				out.push('  '+(cap>>>0).toString(16)+"   "+i+'      -     CAPTURE '+kind+' B='+i_b(cap)+"\n");
          }
     }
-		if (wide(iris_1825i_30)) iris_1825i_5++
-    iris_1825i_5++
+		if (wide(op)) i++
+    i++
   }
-	iris_1825i_4.push("\n")
+	out.push("\n")
 }
-function disassemble (iris_1825i_127) {
-    const iris_1825i_4=[]
-  iris_1825i_4.push("-- iris disassembly\n")
-  iris_1825i_4.push('-- protos: '+iris_1825i_127.protos.length+', strings: '+iris_1825i_127.strings.length+"\n\n")
-  for (let iris_1825i_128=0;iris_1825i_128<iris_1825i_127.protos.length;iris_1825i_128++) dump_proto(iris_1825i_4,iris_1825i_127,iris_1825i_128);
-  return iris_1825i_4.join('')
+function disassemble (program) {
+    const out=[]
+  out.push("-- luau disassembly\n")
+  out.push('-- protos: '+program.protos.length+', strings: '+program.strings.length+"\n\n")
+  for (let pi=0;pi<program.protos.length;pi++) dump_proto(out,program,pi);
+  return out.join('')
 }
-function disassembleProto (iris_1825i_127,iris_1825i_56) {
-   if (iris_1825i_56<0||iris_1825i_56>=iris_1825i_127.protos.length) return '-- no proto '+iris_1825i_56+"\n"
-  const iris_1825i_4=[]
-   dump_proto(iris_1825i_4,iris_1825i_127,iris_1825i_56)
-   return iris_1825i_4.join("");
+function disassembleProto (program,index) {
+   if (index<0||index>=program.protos.length) return '-- no proto '+index+"\n"
+  const out=[]
+   dump_proto(out,program,index)
+   return out.join("");
 }
 
-function base64Decode(iris_1825i_141) {
-  const iris_1825i_4=[]
-   let iris_1825i_142=0,iris_1825i_143=0;
-	const iris_1825i_144=(iris_1825i_67)=>{
-    const iris_1825i_35=iris_1825i_67.charCodeAt(0)
-    if (iris_1825i_35>=0x41&&iris_1825i_35<=0x5a) return iris_1825i_35-0x41;
-      if (iris_1825i_35>=0x61&&iris_1825i_35<=0x7a) return iris_1825i_35-0x61+26
-      if (iris_1825i_35>=0x30&&iris_1825i_35<=0x39) return iris_1825i_35-0x30+52;
-		if (iris_1825i_35===0x2b) return 62;
-		if (iris_1825i_35===0x2f) return 63
+function base64Decode(input) {
+  const out=[]
+   let buffer=0,bits=0;
+	const b64val=(c)=>{
+    const code=c.charCodeAt(0)
+    if (code>=0x41&&code<=0x5a) return code-0x41;
+      if (code>=0x61&&code<=0x7a) return code-0x61+26
+      if (code>=0x30&&code<=0x39) return code-0x30+52;
+		if (code===0x2b) return 62;
+		if (code===0x2f) return 63
     return -1
   }
-  for (const iris_1825i_67 of iris_1825i_141) {
-        if (iris_1825i_67==="\r"||iris_1825i_67==="\n"||iris_1825i_67===' '||iris_1825i_67==="\t") continue
-    if (iris_1825i_67==="=") break
-		const iris_1825i_42=iris_1825i_144(iris_1825i_67)
-    if (iris_1825i_42<0) return null;
-    iris_1825i_142=(iris_1825i_142<<6)|iris_1825i_42
-    iris_1825i_143+=6;
-		if (iris_1825i_143>=8) {
-			iris_1825i_143-=8;
-      iris_1825i_4.push((iris_1825i_142>>iris_1825i_143)&0xff)
+  for (const c of input) {
+        if (c==="\r"||c==="\n"||c===' '||c==="\t") continue
+    if (c==="=") break
+		const v=b64val(c)
+    if (v<0) return null;
+    buffer=(buffer<<6)|v
+    bits+=6;
+		if (bits>=8) {
+			bits-=8;
+      out.push((buffer>>bits)&0xff)
     }
   }
-  return new Uint8Array(iris_1825i_4);
+  return new Uint8Array(out);
 }
 
 
-const iris_1825i_145 = {
+const OPT = {
   indent: 'tab',
    typeAnnotations: 'default',
   discardNames: "named",
@@ -718,92 +721,92 @@ const iris_1825i_145 = {
   lineComments: false,
 }
 
-function indent_unit() { return iris_1825i_145.indent === "tab" ? "\t" : " ".repeat(iris_1825i_145.indent) }
+function indent_unit() { return OPT.indent === "tab" ? "\t" : " ".repeat(OPT.indent) }
 
-const iris_1825i_147 = new Set([
+const KEYWORDS = new Set([
   'and','break','do',"else","elseif",'end',"false",'for',"function",'if',
   'in',"local",'nil',"not",'or','repeat','return',"then","true","until",
   'while','continue',
 ])
 
-function is_identifier(iris_1825i_46) {
-  if (iris_1825i_46.length === 0) return false;
-	const iris_1825i_149 = iris_1825i_46.charCodeAt(0)
-  if (!((iris_1825i_149 >= 0x41 && iris_1825i_149 <= 0x5a) || (iris_1825i_149 >= 0x61 && iris_1825i_149 <= 0x7a) || iris_1825i_149 === 0x5f)) return false;
-	for (let iris_1825i_5 = 1; iris_1825i_5 < iris_1825i_46.length; iris_1825i_5++) {
-        const iris_1825i_67 = iris_1825i_46.charCodeAt(iris_1825i_5)
-      if (!((iris_1825i_67 >= 0x41 && iris_1825i_67 <= 0x5a) || (iris_1825i_67 >= 0x61 && iris_1825i_67 <= 0x7a) || (iris_1825i_67 >= 0x30 && iris_1825i_67 <= 0x39) || iris_1825i_67 === 0x5f)) return false;
+function is_identifier(s) {
+  if (s.length === 0) return false;
+	const c0 = s.charCodeAt(0)
+  if (!((c0 >= 0x41 && c0 <= 0x5a) || (c0 >= 0x61 && c0 <= 0x7a) || c0 === 0x5f)) return false;
+	for (let i = 1; i < s.length; i++) {
+        const c = s.charCodeAt(i)
+      if (!((c >= 0x41 && c <= 0x5a) || (c >= 0x61 && c <= 0x7a) || (c >= 0x30 && c <= 0x39) || c === 0x5f)) return false;
   }
-	return !iris_1825i_147.has(iris_1825i_46)
+	return !KEYWORDS.has(s)
 }
 
 
-function fmt_number(iris_1825i_42) {
-	if (Number.isNaN(iris_1825i_42)) return "(0/0)";
-    if (!Number.isFinite(iris_1825i_42)) return iris_1825i_42 < 0 ? "-(1/0)" : '(1/0)'
-    if (iris_1825i_145.mathConstants) {
-    const iris_1825i_67 = nice_const(iris_1825i_42);
-    if (iris_1825i_67) return iris_1825i_67
+function fmt_number(v) {
+	if (Number.isNaN(v)) return "(0/0)";
+    if (!Number.isFinite(v)) return v < 0 ? "-(1/0)" : '(1/0)'
+    if (OPT.mathConstants) {
+    const c = nice_const(v);
+    if (c) return c
     }
-   if (Math.floor(iris_1825i_42) === iris_1825i_42 && Math.abs(iris_1825i_42) < 1e15) return String(Math.trunc(iris_1825i_42));
-  let iris_1825i_46 = iris_1825i_42.toPrecision(14)
-	if (iris_1825i_46.indexOf(".") !== -1) {
-    while (iris_1825i_46.length > 0 && iris_1825i_46[iris_1825i_46.length - 1] === "0") iris_1825i_46 = iris_1825i_46.slice(0, -1)
-        if (iris_1825i_46[iris_1825i_46.length - 1] === ".") iris_1825i_46 = iris_1825i_46.slice(0, -1);
+   if (Math.floor(v) === v && Math.abs(v) < 1e15) return String(Math.trunc(v));
+  let s = v.toPrecision(14)
+	if (s.indexOf(".") !== -1) {
+    while (s.length > 0 && s[s.length - 1] === "0") s = s.slice(0, -1)
+        if (s[s.length - 1] === ".") s = s.slice(0, -1);
   }
-  return iris_1825i_46 === '' ? "0" : iris_1825i_46
+  return s === '' ? "0" : s
 }
 
 
-function nice_const (iris_1825i_42) {
-   const iris_1825i_152 = (iris_1825i_23, iris_1825i_47) => Math.abs(iris_1825i_23 - iris_1825i_47) < 5e-14;
-  if (iris_1825i_152(iris_1825i_42, Math.PI)) return 'math.pi'
-  if (iris_1825i_152(iris_1825i_42, Math.PI / 2)) return "math.pi / 2"
-    if (iris_1825i_152(iris_1825i_42, Math.PI * 2)) return 'math.pi * 2'
-  if (iris_1825i_152(iris_1825i_42, -Math.PI)) return "-math.pi";
-	if (iris_1825i_152(iris_1825i_42, Math.E)) return "math.e";
-	if (iris_1825i_152(iris_1825i_42, Math.PI / 4)) return "math.pi / 4";
+function nice_const (v) {
+   const close = (a, b) => Math.abs(a - b) < 5e-14;
+  if (close(v, Math.PI)) return 'math.pi'
+  if (close(v, Math.PI / 2)) return "math.pi / 2"
+    if (close(v, Math.PI * 2)) return 'math.pi * 2'
+  if (close(v, -Math.PI)) return "-math.pi";
+	if (close(v, Math.E)) return "math.e";
+	if (close(v, Math.PI / 4)) return "math.pi / 4";
 	return null
 }
 
-function quote (iris_1825i_46) {
-    let iris_1825i_4 = '"'
-  for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_46.length; iris_1825i_5++) {
-		const iris_1825i_67 = iris_1825i_46.charCodeAt(iris_1825i_5)
-        if (iris_1825i_67 === 0x22) iris_1825i_4 += '\\"'
-    else if (iris_1825i_67 === 0x5c) iris_1825i_4 += "\\\\";
-      else if (iris_1825i_67 === 0x0a) iris_1825i_4 += "\\n"
-    else if (iris_1825i_67 === 0x0d) iris_1825i_4 += "\\r";
-    else if (iris_1825i_67 === 0x09) iris_1825i_4 += "\\t";
-		else if (iris_1825i_67 === 0x00) iris_1825i_4 += "\\0";
-    else if (iris_1825i_67 < 32) iris_1825i_4 += "\\" + iris_1825i_67;
-    else if (iris_1825i_67 > 0x7e && !iris_1825i_145.unicodeStrings) {
+function quote (s) {
+    let out = '"'
+  for (let i = 0; i < s.length; i++) {
+		const c = s.charCodeAt(i)
+        if (c === 0x22) out += '\\"'
+    else if (c === 0x5c) out += "\\\\";
+      else if (c === 0x0a) out += "\\n"
+    else if (c === 0x0d) out += "\\r";
+    else if (c === 0x09) out += "\\t";
+		else if (c === 0x00) out += "\\0";
+    else if (c < 32) out += "\\" + c;
+    else if (c > 0x7e && !OPT.unicodeStrings) {
 
-			const iris_1825i_12 = utf8_bytes(iris_1825i_46[iris_1825i_5]);
-      for (let iris_1825i_125 = 0; iris_1825i_125 < iris_1825i_12.length; iris_1825i_125++) iris_1825i_4 += "\\" + iris_1825i_12[iris_1825i_125]
-    } else iris_1825i_4 += iris_1825i_46[iris_1825i_5]
+			const bytes = utf8_bytes(s[i]);
+      for (let k = 0; k < bytes.length; k++) out += "\\" + bytes[k]
+    } else out += s[i]
 	}
-   return iris_1825i_4 + '"'
+   return out + '"'
 }
 
-function utf8_bytes (iris_1825i_155) {
-  const iris_1825i_156 = iris_1825i_155.codePointAt(0)
-    if (iris_1825i_156 < 0x80) return [iris_1825i_156]
-   if (iris_1825i_156 < 0x800) return [0xc0 | (iris_1825i_156 >> 6), 0x80 | (iris_1825i_156 & 0x3f)]
-	if (iris_1825i_156 < 0x10000) return [0xe0 | (iris_1825i_156 >> 12), 0x80 | ((iris_1825i_156 >> 6) & 0x3f), 0x80 | (iris_1825i_156 & 0x3f)]
-   return [0xf0 | (iris_1825i_156 >> 18), 0x80 | ((iris_1825i_156 >> 12) & 0x3f), 0x80 | ((iris_1825i_156 >> 6) & 0x3f), 0x80 | (iris_1825i_156 & 0x3f)]
+function utf8_bytes (ch) {
+  const cp = ch.codePointAt(0)
+    if (cp < 0x80) return [cp]
+   if (cp < 0x800) return [0xc0 | (cp >> 6), 0x80 | (cp & 0x3f)]
+	if (cp < 0x10000) return [0xe0 | (cp >> 12), 0x80 | ((cp >> 6) & 0x3f), 0x80 | (cp & 0x3f)]
+   return [0xf0 | (cp >> 18), 0x80 | ((cp >> 12) & 0x3f), 0x80 | ((cp >> 6) & 0x3f), 0x80 | (cp & 0x3f)]
 }
 
-function val_text (iris_1825i_67) {
-    switch (iris_1825i_67.kind) {
-    case iris_1825i_14.Nil: return "nil";
-    case iris_1825i_14.Boolean: return iris_1825i_67.boolean ? 'true' : "false";
-		case iris_1825i_14.Number: return fmt_number(iris_1825i_67.number)
-    case iris_1825i_14.Integer: return String(iris_1825i_67.integer);
-    case iris_1825i_14.String: return quote(iris_1825i_67.str)
-    case iris_1825i_14.Vector:
-		case iris_1825i_14.VectorD:
-      return 'vector.create(' + fmt_number(iris_1825i_67.vec[0]) + ', ' + fmt_number(iris_1825i_67.vec[1]) + ", " + fmt_number(iris_1825i_67.vec[2]) + ")"
+function val_text (c) {
+    switch (c.kind) {
+    case ConstK.Nil: return "nil";
+    case ConstK.Boolean: return c.boolean ? 'true' : "false";
+		case ConstK.Number: return fmt_number(c.number)
+    case ConstK.Integer: return String(c.integer);
+    case ConstK.String: return quote(c.str)
+    case ConstK.Vector:
+		case ConstK.VectorD:
+      return 'vector.create(' + fmt_number(c.vec[0]) + ', ' + fmt_number(c.vec[1]) + ", " + fmt_number(c.vec[2]) + ")"
       default:
       return "?";
    }
@@ -811,23 +814,23 @@ function val_text (iris_1825i_67) {
 
 
 
-const iris_1825i_158 = Object.freeze({
+const ExprK = Object.freeze({
    Leaf:0, Bin:1, Un:2, Index:3, Dot:4, Call:5, MethodCall:6, Table:7, Lambda:8, Vararg:9, IfElse:10,
 })
 
-function make_expr (iris_1825i_137) {
+function make_expr (kind) {
     return {
-    kind: iris_1825i_137, prec:0, rightAssoc:false, multi:false, built:false, parenWrap:false,
+    kind, prec:0, rightAssoc:false, multi:false, built:false, parenWrap:false,
       text:'', op:'', args:[], name:'', keys:[], vals:[],
     hdr:'', about:'', srcLine:0, bodyLines:[], ty:null,
   }
 }
 
 
-function ty (iris_1825i_161, iris_1825i_118) { return { name: iris_1825i_118, tier: iris_1825i_161 } }
+function ty (tier, name) { return { name, tier } }
 
-function typed_prefix (iris_1825i_163) {
-    switch (iris_1825i_163) {
+function typed_prefix (t) {
+    switch (t) {
 		case 'number': return 'number'
       case 'string': return "string";
 		case 'boolean': return "boolean"
@@ -845,409 +848,409 @@ function typed_prefix (iris_1825i_163) {
 
 
 
-function pretty_name(iris_1825i_46) {
-   const iris_1825i_165 = String(iris_1825i_46).split(/[^A-Za-z0-9]+/).filter((iris_1825i_55) => iris_1825i_55.length > 0)
-    if (iris_1825i_165.length === 0) return '';
-   let iris_1825i_4 = iris_1825i_165[0]
-   for (let iris_1825i_5 = 1; iris_1825i_5 < iris_1825i_165.length; iris_1825i_5++) iris_1825i_4 += iris_1825i_165[iris_1825i_5].charAt(0).toUpperCase() + iris_1825i_165[iris_1825i_5].slice(1)
-	return iris_1825i_4
+function pretty_name(s) {
+   const parts = String(s).split(/[^A-Za-z0-9]+/).filter((p) => p.length > 0)
+    if (parts.length === 0) return '';
+   let out = parts[0]
+   for (let i = 1; i < parts.length; i++) out += parts[i].charAt(0).toUpperCase() + parts[i].slice(1)
+	return out
 }
 
-function quoted_str (iris_1825i_123) {
-  if (!iris_1825i_123 || iris_1825i_123.kind !== iris_1825i_158.Leaf) return '';
-    const iris_1825i_163 = iris_1825i_123.text
-   if (iris_1825i_163.length >= 2 && iris_1825i_163[0] === '"' && iris_1825i_163[iris_1825i_163.length - 1] === '"') return iris_1825i_163.slice(1, -1);
+function quoted_str (e) {
+  if (!e || e.kind !== ExprK.Leaf) return '';
+    const t = e.text
+   if (t.length >= 2 && t[0] === '"' && t[t.length - 1] === '"') return t.slice(1, -1);
   return ""
 }
 
-function infer_call_name(iris_1825i_168){
-    const iris_1825i_123 = iris_1825i_168 && iris_1825i_168.a;
-    if (!iris_1825i_123 || !iris_1825i_168.args || iris_1825i_168.args.length === 0) return "";
-    const iris_1825i_163 = expr_text(iris_1825i_123);
-    if (iris_1825i_163 === "require") {
-        const iris_1825i_169 = iris_1825i_168.args[0];
-        const iris_1825i_170 = iris_1825i_169 && iris_1825i_169.args && iris_1825i_169.args[0];
-        const iris_1825i_171 = quoted_str(iris_1825i_170) || (iris_1825i_170 && iris_1825i_170._srcStr) || "";
-        if (iris_1825i_169 && iris_1825i_169.kind === iris_1825i_158.MethodCall &&
-            (iris_1825i_169.name === "WaitForChild" || iris_1825i_169.name === "FindFirstChild"))
-            return pretty_name(iris_1825i_171);
+function infer_call_name(expr){
+    const e = expr && expr.a;
+    if (!e || !expr.args || expr.args.length === 0) return "";
+    const t = expr_text(e);
+    if (t === "require") {
+        const a0 = expr.args[0];
+        const a1 = a0 && a0.args && a0.args[0];
+        const q = quoted_str(a1) || (a1 && a1._srcStr) || "";
+        if (a0 && a0.kind === ExprK.MethodCall &&
+            (a0.name === "WaitForChild" || a0.name === "FindFirstChild"))
+            return pretty_name(q);
     }
-    if (iris_1825i_123.kind === iris_1825i_158.Dot && (iris_1825i_123.name === "get" || iris_1825i_123.name === "getModule")) {
-        const iris_1825i_170 = iris_1825i_168.args[0];
-        const iris_1825i_171 = quoted_str(iris_1825i_170) || (iris_1825i_170 && iris_1825i_170._srcStr) || "";
-        return pretty_name(iris_1825i_171);
+    if (e.kind === ExprK.Dot && (e.name === "get" || e.name === "getModule")) {
+        const a1 = expr.args[0];
+        const q = quoted_str(a1) || (a1 && a1._srcStr) || "";
+        return pretty_name(q);
     }
     return "";
 }
 
 
-function ty_expr (iris_1825i_123) {
-  if (!iris_1825i_123) return null;
-  switch (iris_1825i_123.kind) {
-    case iris_1825i_158.Leaf: {
-      const iris_1825i_163 = iris_1825i_123.text
-         if (iris_1825i_163.length > 0 && iris_1825i_163[0] === '"') return ty(1, 'string')
-         if (/^-?\d+(\.\d+)?$/.test(iris_1825i_163) || iris_1825i_163 === 'math.pi' || iris_1825i_163.startsWith("math.pi")) return ty(1, 'number');
-      if (iris_1825i_163 === "true" || iris_1825i_163 === "false") return ty(1, "boolean")
-            if (iris_1825i_163.startsWith("Vector3.")) return ty(iris_1825i_163 === 'Vector3.new' ? 1 : 2, "Vector3")
-      if (iris_1825i_163.startsWith("Vector2.")) return ty(iris_1825i_163 === 'Vector2.new' ? 1 : 2, 'Vector2')
-         if (iris_1825i_163.startsWith("Color3.")) return ty(iris_1825i_163 === 'Color3.new' ? 1 : 2, "Color3");
-      if (iris_1825i_163.startsWith("CFrame.")) return ty(iris_1825i_163 === 'CFrame.new' ? 1 : 2, 'CFrame')
-      if (iris_1825i_163.startsWith('UDim2.') && iris_1825i_163 !== "UDim2.fromScale" && iris_1825i_163 !== "UDim2.fromOffset") return ty(1, "UDim2")
-         if (iris_1825i_163.startsWith('Instance.new')) return ty(1, 'Instance');
-			if (iris_1825i_163.startsWith('Instance.')) return ty(2, 'Instance');
-      if (iris_1825i_163.startsWith("math.")) return ty(1, 'number');
-			if (iris_1825i_163.startsWith('string.')) return ty(1, 'string')
-            if (iris_1825i_163.startsWith('table.')) return ty(1, 'table')
-         if (iris_1825i_163.startsWith('buffer.')) return ty(1, 'number')
-         if (iris_1825i_163.startsWith("task.")) return ty(1, "number");
-      if (iris_1825i_163.startsWith('os.time')) return ty(1, 'number')
-         if (iris_1825i_163.startsWith("os.clock")) return ty(1, "number")
-			if (iris_1825i_163.startsWith("Enum.")) return ty(1, "Enum")
+function ty_expr (e) {
+  if (!e) return null;
+  switch (e.kind) {
+    case ExprK.Leaf: {
+      const t = e.text
+         if (t.length > 0 && t[0] === '"') return ty(1, 'string')
+         if (/^-?\d+(\.\d+)?$/.test(t) || t === 'math.pi' || t.startsWith("math.pi")) return ty(1, 'number');
+      if (t === "true" || t === "false") return ty(1, "boolean")
+            if (t.startsWith("Vector3.")) return ty(t === 'Vector3.new' ? 1 : 2, "Vector3")
+      if (t.startsWith("Vector2.")) return ty(t === 'Vector2.new' ? 1 : 2, 'Vector2')
+         if (t.startsWith("Color3.")) return ty(t === 'Color3.new' ? 1 : 2, "Color3");
+      if (t.startsWith("CFrame.")) return ty(t === 'CFrame.new' ? 1 : 2, 'CFrame')
+      if (t.startsWith('UDim2.') && t !== "UDim2.fromScale" && t !== "UDim2.fromOffset") return ty(1, "UDim2")
+         if (t.startsWith('Instance.new')) return ty(1, 'Instance');
+			if (t.startsWith('Instance.')) return ty(2, 'Instance');
+      if (t.startsWith("math.")) return ty(1, 'number');
+			if (t.startsWith('string.')) return ty(1, 'string')
+            if (t.startsWith('table.')) return ty(1, 'table')
+         if (t.startsWith('buffer.')) return ty(1, 'number')
+         if (t.startsWith("task.")) return ty(1, "number");
+      if (t.startsWith('os.time')) return ty(1, 'number')
+         if (t.startsWith("os.clock")) return ty(1, "number")
+			if (t.startsWith("Enum.")) return ty(1, "Enum")
          return null
         }
-    case iris_1825i_158.Un:
-         if (iris_1825i_123.op === '-' || iris_1825i_123.op === '#') return ty(1, 'number');
-      if (iris_1825i_123.op === 'not') return ty(1, 'boolean')
-            return ty_expr(iris_1825i_123.a)
-		case iris_1825i_158.Bin:
-      if (iris_1825i_123.op === '..') return ty(1, 'string')
-      if (iris_1825i_123.op === 'and' || iris_1825i_123.op === 'or') {
-        const iris_1825i_173 = ty_expr(iris_1825i_123.a), iris_1825i_54 = ty_expr(iris_1825i_123.b)
-				return iris_1825i_173 && iris_1825i_173.name === iris_1825i_54 && iris_1825i_54.name ? iris_1825i_173 : null;
+    case ExprK.Un:
+         if (e.op === '-' || e.op === '#') return ty(1, 'number');
+      if (e.op === 'not') return ty(1, 'boolean')
+            return ty_expr(e.a)
+		case ExprK.Bin:
+      if (e.op === '..') return ty(1, 'string')
+      if (e.op === 'and' || e.op === 'or') {
+        const l = ty_expr(e.a), r = ty_expr(e.b)
+				return l && l.name === r && r.name ? l : null;
 			}
             return ty(1, "number")
-		case iris_1825i_158.Call: case iris_1825i_158.MethodCall: {
-			const iris_1825i_174 = iris_1825i_123.kind === iris_1825i_158.Call ? expr_text(iris_1825i_123.a) : (iris_1825i_123.name || '')
-      return ty_call(iris_1825i_174, iris_1825i_123.kind === iris_1825i_158.Call ? iris_1825i_123.a : null)
+		case ExprK.Call: case ExprK.MethodCall: {
+			const calleeTxt = e.kind === ExprK.Call ? expr_text(e.a) : (e.name || '')
+      return ty_call(calleeTxt, e.kind === ExprK.Call ? e.a : null)
         }
-        case iris_1825i_158.Index: return null
-		case iris_1825i_158.Dot: {
-            const iris_1825i_47 = expr_text(iris_1825i_123.a);
-			if (iris_1825i_47 === "math") return ty(1, 'number');
-            if (iris_1825i_47 === "string") return ty(1, 'string')
-      if (iris_1825i_47 === 'table') return ty(1, "table")
-      const iris_1825i_175 = ty_expr(iris_1825i_123.a)
-            if (iris_1825i_175 && iris_1825i_175.tier === 1) return iris_1825i_175
+        case ExprK.Index: return null
+		case ExprK.Dot: {
+            const b = expr_text(e.a);
+			if (b === "math") return ty(1, 'number');
+            if (b === "string") return ty(1, 'string')
+      if (b === 'table') return ty(1, "table")
+      const bt = ty_expr(e.a)
+            if (bt && bt.tier === 1) return bt
          return null;
     }
-		case iris_1825i_158.Table: return ty(1, 'table')
-		case iris_1825i_158.Lambda: return ty(1, 'function');
+		case ExprK.Table: return ty(1, 'table')
+		case ExprK.Lambda: return ty(1, 'function');
       default: return null
 	}
 }
 
-function expr_text(iris_1825i_123) {
-   if (!iris_1825i_123) return "";
-	const iris_1825i_177 = render_expr(iris_1825i_123)
-    return iris_1825i_177.length ? iris_1825i_177[0][1] : '';
+function expr_text(e) {
+   if (!e) return "";
+	const rl = render_expr(e)
+    return rl.length ? rl[0][1] : '';
 }
 
-function ty_call (iris_1825i_174, iris_1825i_179) {
-	const iris_1825i_180 = iris_1825i_174.match(/([A-Za-z]+)\.new$/)
-  if (iris_1825i_180) {
-    const iris_1825i_181 = iris_1825i_180[1]
-    if (iris_1825i_181 === "Instance") return ty(1, "Instance")
-      if (/^(Vector3|Vector2|Color3|CFrame|UDim2|Random|Region3|Ray|TweenInfo|NumberRange|NumberSequence|PhysicalProperties|SegmentedColorScale|RotationCurve)?$/.test(iris_1825i_181) ||
-      iris_1825i_181.length <= 9 && /^[A-Z]/.test(iris_1825i_181)) return ty(2, iris_1825i_181)
+function ty_call (calleeTxt, base) {
+	const m = calleeTxt.match(/([A-Za-z]+)\.new$/)
+  if (m) {
+    const cls = m[1]
+    if (cls === "Instance") return ty(1, "Instance")
+      if (/^(Vector3|Vector2|Color3|CFrame|UDim2|Random|Region3|Ray|TweenInfo|NumberRange|NumberSequence|PhysicalProperties|SegmentedColorScale|RotationCurve)?$/.test(cls) ||
+      cls.length <= 9 && /^[A-Z]/.test(cls)) return ty(2, cls)
 	}
-   if (iris_1825i_174 === "Instance.new") return ty(1, 'Instance');
-    if (iris_1825i_174 === "Vector3.new") return ty(1, 'Vector3');
-  if (iris_1825i_174 === "Color3.new") return ty(1, 'Color3');
-	if (iris_1825i_174 === 'Vector2.new') return ty(1, 'Vector2')
-   if (iris_1825i_174 === 'CFrame.new') return ty(1, 'CFrame')
-    if (iris_1825i_174 === 'WaitForChild' || iris_1825i_174 === "FindFirstChild" ||
-		iris_1825i_174 === "FindFirstChildOfClass" || iris_1825i_174 === 'WaitForChildOfClass' ||
-    iris_1825i_174 === 'Clone' || iris_1825i_174 === 'GetParent') return ty(2, 'Instance');
-	if (iris_1825i_174 === 'GetChildren' || iris_1825i_174 === 'GetDescendants' ||
-    iris_1825i_174 === "GetPlayers" || iris_1825i_174 === 'GetTags') return ty(2, '{Instance}');
-    if (iris_1825i_174 === "type" || iris_1825i_174 === "typeof") return ty(1, "string");
-  if (iris_1825i_174 === "tostring") return ty(1, 'string')
-    if (iris_1825i_174 === 'tonumber') return ty(1, "number")
-   if (iris_1825i_174 === 'pcall' || iris_1825i_174 === "xpcall") return null;
-    if (iris_1825i_179) return ty_expr(iris_1825i_179)
+   if (calleeTxt === "Instance.new") return ty(1, 'Instance');
+    if (calleeTxt === "Vector3.new") return ty(1, 'Vector3');
+  if (calleeTxt === "Color3.new") return ty(1, 'Color3');
+	if (calleeTxt === 'Vector2.new') return ty(1, 'Vector2')
+   if (calleeTxt === 'CFrame.new') return ty(1, 'CFrame')
+    if (calleeTxt === 'WaitForChild' || calleeTxt === "FindFirstChild" ||
+		calleeTxt === "FindFirstChildOfClass" || calleeTxt === 'WaitForChildOfClass' ||
+    calleeTxt === 'Clone' || calleeTxt === 'GetParent') return ty(2, 'Instance');
+	if (calleeTxt === 'GetChildren' || calleeTxt === 'GetDescendants' ||
+    calleeTxt === "GetPlayers" || calleeTxt === 'GetTags') return ty(2, '{Instance}');
+    if (calleeTxt === "type" || calleeTxt === "typeof") return ty(1, "string");
+  if (calleeTxt === "tostring") return ty(1, 'string')
+    if (calleeTxt === 'tonumber') return ty(1, "number")
+   if (calleeTxt === 'pcall' || calleeTxt === "xpcall") return null;
+    if (base) return ty_expr(base)
   return null
 }
 
 
-function render_expr (iris_1825i_123) {
-  if (!iris_1825i_123) return [[0, "nil"]]
-   switch (iris_1825i_123.kind) {
-		case iris_1825i_158.Leaf:
-    case iris_1825i_158.Vararg:
-         return [[0, iris_1825i_123.text]]
-		case iris_1825i_158.Un:
-         return render_un(iris_1825i_123)
-      case iris_1825i_158.Bin:
-			return render_bin(iris_1825i_123);
-        case iris_1825i_158.Index: {
-			const iris_1825i_47 = render_expr(iris_1825i_123.a)
-      const iris_1825i_125 = render_expr(iris_1825i_123.b)
-      if (iris_1825i_47.length === 1 && iris_1825i_125.length === 1) return [[0, iris_1825i_47[0][1] + "[" + iris_1825i_125[0][1] + ']']]
-      iris_1825i_47[iris_1825i_47.length - 1][1] += '[';
-            for (const iris_1825i_173 of iris_1825i_125) iris_1825i_47.push(iris_1825i_173);
-         iris_1825i_47[iris_1825i_47.length - 1][1] += ']'
-			return iris_1825i_47
+function render_expr (e) {
+  if (!e) return [[0, "nil"]]
+   switch (e.kind) {
+		case ExprK.Leaf:
+    case ExprK.Vararg:
+         return [[0, e.text]]
+		case ExprK.Un:
+         return render_un(e)
+      case ExprK.Bin:
+			return render_bin(e);
+        case ExprK.Index: {
+			const b = render_expr(e.a)
+      const k = render_expr(e.b)
+      if (b.length === 1 && k.length === 1) return [[0, b[0][1] + "[" + k[0][1] + ']']]
+      b[b.length - 1][1] += '[';
+            for (const l of k) b.push(l);
+         b[b.length - 1][1] += ']'
+			return b
         }
-    case iris_1825i_158.Dot: {
-         const iris_1825i_47 = render_expr(iris_1825i_123.a)
-         for (const iris_1825i_173 of iris_1825i_47) iris_1825i_173[1] += '.' + iris_1825i_123.name
-      return iris_1825i_47
+    case ExprK.Dot: {
+         const b = render_expr(e.a)
+         for (const l of b) l[1] += '.' + e.name
+      return b
     }
-    case iris_1825i_158.Call:
-			return render_call_rows(iris_1825i_123, '(')
-      case iris_1825i_158.MethodCall:
-			return render_call_rows(iris_1825i_123, ':' + iris_1825i_123.name + '(');
-      case iris_1825i_158.Table:
-			return render_table(iris_1825i_123)
-		case iris_1825i_158.Lambda:
-			return render_closure(iris_1825i_123);
-    case iris_1825i_158.IfElse: {
-      const iris_1825i_183 = render_expr(iris_1825i_123.a);
-			const iris_1825i_184 = render_expr(iris_1825i_123.b)
-            const iris_1825i_185 = render_expr(iris_1825i_123.c)
-			const iris_1825i_186 = iris_1825i_183.length === 0 ? "false" : iris_1825i_183[0][1]
-      const iris_1825i_187 = iris_1825i_184.length === 0 ? 'nil' : iris_1825i_184[0][1]
-            const iris_1825i_188 = iris_1825i_185.length === 0 ? 'nil' : iris_1825i_185[0][1]
-         return [[0, 'if ' + iris_1825i_186 + " then " + iris_1825i_187 + ' else ' + iris_1825i_188]]
+    case ExprK.Call:
+			return render_call_rows(e, '(')
+      case ExprK.MethodCall:
+			return render_call_rows(e, ':' + e.name + '(');
+      case ExprK.Table:
+			return render_table(e)
+		case ExprK.Lambda:
+			return render_closure(e);
+    case ExprK.IfElse: {
+      const condR = render_expr(e.a);
+			const thenR = render_expr(e.b)
+            const elseR = render_expr(e.c)
+			const cstr = condR.length === 0 ? "false" : condR[0][1]
+      const tstr = thenR.length === 0 ? 'nil' : thenR[0][1]
+            const estr = elseR.length === 0 ? 'nil' : elseR[0][1]
+         return [[0, 'if ' + cstr + " then " + tstr + ' else ' + estr]]
 		}
 		default:
 			return [[0, 'nil']]
 	}
 }
 
-function table_key_name(iris_1825i_125) {
-    if (!iris_1825i_125 || iris_1825i_125.kind !== iris_1825i_158.Leaf) return '';
-  let iris_1825i_163 = iris_1825i_125.text;
-  if (iris_1825i_163.length >= 2 && iris_1825i_163[0] === '"' && iris_1825i_163[iris_1825i_163.length - 1] === '"') iris_1825i_163 = iris_1825i_163.slice(1, -1)
-    return is_identifier(iris_1825i_163) ? iris_1825i_163 : '';
+function table_key_name(k) {
+    if (!k || k.kind !== ExprK.Leaf) return '';
+  let t = k.text;
+  if (t.length >= 2 && t[0] === '"' && t[t.length - 1] === '"') t = t.slice(1, -1)
+    return is_identifier(t) ? t : '';
 }
 
-function format_table_key(iris_1825i_125) {
-	if (!iris_1825i_125) return ""
-	const iris_1825i_118 = table_key_name(iris_1825i_125);
-    if (iris_1825i_118.length > 0) return iris_1825i_118 + " = ";
-  const iris_1825i_191 = render_expr(iris_1825i_125);
-  if (iris_1825i_191.length > 0) return '[' + iris_1825i_191[0][1] + '] = ';
+function format_table_key(k) {
+	if (!k) return ""
+	const name = table_key_name(k);
+    if (name.length > 0) return name + " = ";
+  const kr = render_expr(k);
+  if (kr.length > 0) return '[' + kr[0][1] + '] = ';
 	return '';
 }
 
-function is_single_line_table(iris_1825i_123) {
-  if (!iris_1825i_123 || iris_1825i_123.kind !== iris_1825i_158.Table) return false;
-  if (iris_1825i_123.vals.length === 0) return true
-	if (iris_1825i_123.vals.length > 3) return false
-    for (const iris_1825i_193 of iris_1825i_123.vals) {
-    if (!iris_1825i_193 || iris_1825i_193.kind === iris_1825i_158.Table || iris_1825i_193.kind === iris_1825i_158.Lambda) return false
+function is_single_line_table(e) {
+  if (!e || e.kind !== ExprK.Table) return false;
+  if (e.vals.length === 0) return true
+	if (e.vals.length > 3) return false
+    for (const val of e.vals) {
+    if (!val || val.kind === ExprK.Table || val.kind === ExprK.Lambda) return false
 	}
 	return true;
 }
 
-function render_table_single_line(iris_1825i_123) {
-    if (!iris_1825i_123 || iris_1825i_123.vals.length === 0) return [[0, '{}']]
-  let iris_1825i_195 = "{"
-  let iris_1825i_196 = false;
-	for (const iris_1825i_125 of iris_1825i_123.keys) if (iris_1825i_125) iris_1825i_196 = true;
-    if (!iris_1825i_196) {
-      iris_1825i_195 += " ";
-		for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_123.vals.length; iris_1825i_5++) {
-			if (iris_1825i_5) iris_1825i_195 += ', '
-      const iris_1825i_197 = render_expr(iris_1825i_123.vals[iris_1825i_5])
-      if (iris_1825i_197.length === 0) return []
-      iris_1825i_195 += iris_1825i_197[0][1]
+function render_table_single_line(e) {
+    if (!e || e.vals.length === 0) return [[0, '{}']]
+  let cur = "{"
+  let hasKeys = false;
+	for (const k of e.keys) if (k) hasKeys = true;
+    if (!hasKeys) {
+      cur += " ";
+		for (let i = 0; i < e.vals.length; i++) {
+			if (i) cur += ', '
+      const vr = render_expr(e.vals[i])
+      if (vr.length === 0) return []
+      cur += vr[0][1]
     }
-		iris_1825i_195 += " }";
-      return [[0, iris_1825i_195]]
+		cur += " }";
+      return [[0, cur]]
 	}
-   for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_123.vals.length; iris_1825i_5++) {
-        if (iris_1825i_5) iris_1825i_195 += ', '; else iris_1825i_195 += ' '
-    const iris_1825i_198 = format_table_key(iris_1825i_123.keys[iris_1825i_5]);
-        const iris_1825i_197 = render_expr(iris_1825i_123.vals[iris_1825i_5]);
-		if (iris_1825i_197.length === 0) return []
-    iris_1825i_195 += iris_1825i_198 + iris_1825i_197[0][1]
+   for (let i = 0; i < e.vals.length; i++) {
+        if (i) cur += ', '; else cur += ' '
+    const kstr = format_table_key(e.keys[i]);
+        const vr = render_expr(e.vals[i]);
+		if (vr.length === 0) return []
+    cur += kstr + vr[0][1]
     }
-  iris_1825i_195 += ' }';
-	return [[0, iris_1825i_195]]
+  cur += ' }';
+	return [[0, cur]]
 }
 
-// render-time guard so recursive tables print nil instead of looping
-const iris_1825i_199 = [];
-function cycle_ref (iris_1825i_123) {
-    return iris_1825i_199.indexOf(iris_1825i_123) >= 0 || iris_1825i_199.length >= 256 ? [[0, 'nil']] : null
+
+const tableStack = [];
+function cycle_ref (e) {
+    return tableStack.indexOf(e) >= 0 || tableStack.length >= 256 ? [[0, 'nil']] : null
 }
-function render_table (iris_1825i_123) {
-    if (!iris_1825i_123 || iris_1825i_123.vals.length === 0) return [[0, '{}']]
-    const iris_1825i_202 = cycle_ref(iris_1825i_123)
-    if (iris_1825i_202) return iris_1825i_202
-    iris_1825i_199.push(iris_1825i_123)
+function render_table (e) {
+    if (!e || e.vals.length === 0) return [[0, '{}']]
+    const cyc = cycle_ref(e)
+    if (cyc) return cyc
+    tableStack.push(e)
     try {
-        if (is_single_line_table(iris_1825i_123)) {
-            const iris_1825i_203 = render_table_single_line(iris_1825i_123)
-            if (iris_1825i_203.length > 0 && iris_1825i_203[0][1].length < 60) return iris_1825i_203;
+        if (is_single_line_table(e)) {
+            const single = render_table_single_line(e)
+            if (single.length > 0 && single[0][1].length < 60) return single;
         }
-        const iris_1825i_4 = []
-        iris_1825i_4.push([0, "{"])
-        for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_123.vals.length; iris_1825i_5++) {
-            const iris_1825i_204 = format_table_key(iris_1825i_123.keys[iris_1825i_5])
-            const iris_1825i_205 = render_expr(iris_1825i_123.vals[iris_1825i_5])
-            if (iris_1825i_205.length === 0) continue
-            const iris_1825i_206 = (iris_1825i_5 + 1 < iris_1825i_123.vals.length)
-            if (iris_1825i_205.length === 1) {
-                let iris_1825i_130 = iris_1825i_204 + iris_1825i_205[0][1]
-                if (iris_1825i_206) iris_1825i_130 += ','
-                iris_1825i_4.push([1, iris_1825i_130])
+        const out = []
+        out.push([0, "{"])
+        for (let i = 0; i < e.vals.length; i++) {
+            const prefix = format_table_key(e.keys[i])
+            const vv = render_expr(e.vals[i])
+            if (vv.length === 0) continue
+            const add_comma = (i + 1 < e.vals.length)
+            if (vv.length === 1) {
+                let line = prefix + vv[0][1]
+                if (add_comma) line += ','
+                out.push([1, line])
             } else {
-                iris_1825i_4.push([1, iris_1825i_204 + iris_1825i_205[0][1]])
-                for (let iris_1825i_69 = 1; iris_1825i_69 + 1 < iris_1825i_205.length; iris_1825i_69++) iris_1825i_4.push([1 + iris_1825i_205[iris_1825i_69][0], iris_1825i_205[iris_1825i_69][1]])
-                let iris_1825i_207 = iris_1825i_205[iris_1825i_205.length - 1][1]
-                if (iris_1825i_206) iris_1825i_207 += ','
-			iris_1825i_4.push([1 + iris_1825i_205[iris_1825i_205.length - 1][0], iris_1825i_207]);
+                out.push([1, prefix + vv[0][1]])
+                for (let j = 1; j + 1 < vv.length; j++) out.push([1 + vv[j][0], vv[j][1]])
+                let last = vv[vv.length - 1][1]
+                if (add_comma) last += ','
+			out.push([1 + vv[vv.length - 1][0], last]);
 		}
     }
-        iris_1825i_4.push([0, "}"])
-        return iris_1825i_4
+        out.push([0, "}"])
+        return out
     } finally {
-        iris_1825i_199.pop()
+        tableStack.pop()
     }
 }
 
 
-function render_closure (iris_1825i_209) {
-  const iris_1825i_4 = []
-	if (iris_1825i_145.upvalueComments && iris_1825i_209.about) iris_1825i_4.push([0, iris_1825i_209.about])
-  let iris_1825i_210 = iris_1825i_209.hdr;
-    if (iris_1825i_145.lineComments && iris_1825i_209.srcLine) iris_1825i_210 += ' -- line ' + iris_1825i_209.srcLine;
-  iris_1825i_4.push([0, iris_1825i_210])
-	for (const iris_1825i_211 of iris_1825i_209.bodyLines) iris_1825i_4.push([iris_1825i_211[0] + 1, iris_1825i_211[1]]);
-  iris_1825i_4.push([0, 'end']);
-  return iris_1825i_4;
+function render_closure (fn) {
+  const out = []
+	if (OPT.upvalueComments && fn.about) out.push([0, fn.about])
+  let hdr = fn.hdr;
+    if (OPT.lineComments && fn.srcLine) hdr += ' -- line ' + fn.srcLine;
+  out.push([0, hdr])
+	for (const bl of fn.bodyLines) out.push([bl[0] + 1, bl[1]]);
+  out.push([0, 'end']);
+  return out;
 }
 
-function combine_lines(iris_1825i_23, iris_1825i_213, iris_1825i_47) {
-    if (iris_1825i_23.length === 0) return iris_1825i_47;
-  if (iris_1825i_47.length === 0) return iris_1825i_23;
-   if (iris_1825i_23.length === 1 && iris_1825i_47.length === 1) return [[0, iris_1825i_23[0][1] + iris_1825i_213 + iris_1825i_47[0][1]]]
-	if (iris_1825i_47.length === 1) {
-    iris_1825i_23[iris_1825i_23.length - 1][1] += iris_1825i_213 + iris_1825i_47[0][1]
-    return iris_1825i_23
+function combine_lines(a, sep, b) {
+    if (a.length === 0) return b;
+  if (b.length === 0) return a;
+   if (a.length === 1 && b.length === 1) return [[0, a[0][1] + sep + b[0][1]]]
+	if (b.length === 1) {
+    a[a.length - 1][1] += sep + b[0][1]
+    return a
 	}
-	iris_1825i_23[iris_1825i_23.length - 1][1] += iris_1825i_213 + iris_1825i_47[0][1]
-  for (let iris_1825i_5 = 1; iris_1825i_5 < iris_1825i_47.length; iris_1825i_5++) iris_1825i_23.push(iris_1825i_47[iris_1825i_5]);
-	return iris_1825i_23;
+	a[a.length - 1][1] += sep + b[0][1]
+  for (let i = 1; i < b.length; i++) a.push(b[i]);
+	return a;
 }
 
-function wrap_parens(iris_1825i_177, iris_1825i_215) {
-    if (iris_1825i_177.length === 0 || !iris_1825i_215) return
-  iris_1825i_177[0][1] = '(' + iris_1825i_177[0][1]
-  iris_1825i_177[iris_1825i_177.length - 1][1] += ')'
+function wrap_parens(rl, wrap) {
+    if (rl.length === 0 || !wrap) return
+  rl[0][1] = '(' + rl[0][1]
+  rl[rl.length - 1][1] += ')'
 }
 
-function render_bin (iris_1825i_123) {
-    const iris_1825i_217 = iris_1825i_123.prec;
-	const iris_1825i_218 = iris_1825i_123.rightAssoc;
-	let iris_1825i_219 = false;
-	let iris_1825i_220 = false;
-  if (iris_1825i_123.a && iris_1825i_123.a.kind === iris_1825i_158.Bin &&
-    (iris_1825i_123.a.prec < iris_1825i_217 || (iris_1825i_123.a.prec === iris_1825i_217 && iris_1825i_218))) iris_1825i_219 = true;
-  if (iris_1825i_123.b && iris_1825i_123.b.kind === iris_1825i_158.Bin &&
-      (iris_1825i_123.b.prec < iris_1825i_217 || (iris_1825i_123.b.prec === iris_1825i_217 && !iris_1825i_218))) iris_1825i_220 = true;
-   if (iris_1825i_123.b && iris_1825i_123.b.kind === iris_1825i_158.Un && iris_1825i_123.op !== "and" && iris_1825i_123.op !== "or") iris_1825i_220 = true;
-    if (iris_1825i_123.a && iris_1825i_123.a.kind === iris_1825i_158.Un && iris_1825i_123.op === '^') iris_1825i_219 = true;
-   if (iris_1825i_123.a && iris_1825i_123.a.parenWrap) iris_1825i_219 = true;
-  if (iris_1825i_123.b && iris_1825i_123.b.parenWrap) iris_1825i_220 = true
-   const iris_1825i_23 = render_expr(iris_1825i_123.a);
-    const iris_1825i_47 = render_expr(iris_1825i_123.b);
-	wrap_parens(iris_1825i_23, iris_1825i_219);
-    wrap_parens(iris_1825i_47, iris_1825i_220);
-	return combine_lines(iris_1825i_23, ' ' + iris_1825i_123.op + ' ', iris_1825i_47)
+function render_bin (e) {
+    const parentPrec = e.prec;
+	const rightAssoc = e.rightAssoc;
+	let parenL = false;
+	let parenR = false;
+  if (e.a && e.a.kind === ExprK.Bin &&
+    (e.a.prec < parentPrec || (e.a.prec === parentPrec && rightAssoc))) parenL = true;
+  if (e.b && e.b.kind === ExprK.Bin &&
+      (e.b.prec < parentPrec || (e.b.prec === parentPrec && !rightAssoc))) parenR = true;
+   if (e.b && e.b.kind === ExprK.Un && e.op !== "and" && e.op !== "or") parenR = true;
+    if (e.a && e.a.kind === ExprK.Un && e.op === '^') parenL = true;
+   if (e.a && e.a.parenWrap) parenL = true;
+  if (e.b && e.b.parenWrap) parenR = true
+   const a = render_expr(e.a);
+    const b = render_expr(e.b);
+	wrap_parens(a, parenL);
+    wrap_parens(b, parenR);
+	return combine_lines(a, ' ' + e.op + ' ', b)
 }
 
-function render_un (iris_1825i_123) {
-  const iris_1825i_67 = render_expr(iris_1825i_123.a)
-	const iris_1825i_213 = (iris_1825i_123.op === "not") ? ' ' : ''
-  const iris_1825i_222 = !!iris_1825i_123.a && (iris_1825i_123.a.kind === iris_1825i_158.Bin || iris_1825i_123.a.parenWrap);
-  if (iris_1825i_222) {
-      if (iris_1825i_67.length === 1) return [[0, iris_1825i_123.op + iris_1825i_213 + '(' + iris_1825i_67[0][1] + ")"]]
-    iris_1825i_67[0][1] = iris_1825i_123.op + iris_1825i_213 + '(' + iris_1825i_67[0][1]
-    iris_1825i_67[iris_1825i_67.length - 1][1] += ")";
-		return iris_1825i_67;
+function render_un (e) {
+  const c = render_expr(e.a)
+	const sep = (e.op === "not") ? ' ' : ''
+  const needParen = !!e.a && (e.a.kind === ExprK.Bin || e.a.parenWrap);
+  if (needParen) {
+      if (c.length === 1) return [[0, e.op + sep + '(' + c[0][1] + ")"]]
+    c[0][1] = e.op + sep + '(' + c[0][1]
+    c[c.length - 1][1] += ")";
+		return c;
 	}
-	iris_1825i_67[0][1] = iris_1825i_123.op + iris_1825i_213 + iris_1825i_67[0][1]
-	return iris_1825i_67
+	c[0][1] = e.op + sep + c[0][1]
+	return c
 }
 
 
-function render_call_rows(iris_1825i_123, iris_1825i_224) {
-	const iris_1825i_225 = []
-    for (const iris_1825i_173 of render_expr(iris_1825i_123.a)) iris_1825i_225.push([iris_1825i_173[0], iris_1825i_173[1] + iris_1825i_224])
-  for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_123.args.length; iris_1825i_5++) {
-      const iris_1825i_23 = render_expr(iris_1825i_123.args[iris_1825i_5])
-		if (iris_1825i_23.length === 0) continue;
-      const iris_1825i_207 = iris_1825i_225[iris_1825i_225.length - 1]
-		if (iris_1825i_5) iris_1825i_207[1] += ", ";
-    iris_1825i_207[1] += iris_1825i_23[0][1]
-    for (let iris_1825i_69 = 1; iris_1825i_69 < iris_1825i_23.length; iris_1825i_69++) iris_1825i_225.push(iris_1825i_23[iris_1825i_69])
+function render_call_rows(e, stub) {
+	const all = []
+    for (const l of render_expr(e.a)) all.push([l[0], l[1] + stub])
+  for (let i = 0; i < e.args.length; i++) {
+      const a = render_expr(e.args[i])
+		if (a.length === 0) continue;
+      const last = all[all.length - 1]
+		if (i) last[1] += ", ";
+    last[1] += a[0][1]
+    for (let j = 1; j < a.length; j++) all.push(a[j])
 	}
-	if (iris_1825i_225.length > 0) iris_1825i_225[iris_1825i_225.length - 1][1] += ')'
-   return iris_1825i_225;
+	if (all.length > 0) all[all.length - 1][1] += ')'
+   return all;
 }
 
-function one_line (iris_1825i_123) {
-  const iris_1825i_177 = render_expr(iris_1825i_123);
-    return iris_1825i_177.length === 0 ? 'nil' : iris_1825i_177[0][1]
+function one_line (e) {
+  const rl = render_expr(e);
+    return rl.length === 0 ? 'nil' : rl[0][1]
 }
 
-function maybe_backtick(iris_1825i_165) {
-  if (iris_1825i_165.length < 3) return null;
-    if (iris_1825i_165.length % 2 !== 1) return null;
-    const iris_1825i_228 = []
-  for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_165.length; iris_1825i_5 += 2) {
-        const iris_1825i_55 = iris_1825i_165[iris_1825i_5]
-      if (!iris_1825i_55 || iris_1825i_55.kind !== iris_1825i_158.Leaf || !(iris_1825i_55.text.length >= 2 && iris_1825i_55.text[0] === '"' && iris_1825i_55.text[iris_1825i_55.text.length - 1] === '"'))
+function maybe_backtick(parts) {
+  if (parts.length < 3) return null;
+    if (parts.length % 2 !== 1) return null;
+    const lits = []
+  for (let i = 0; i < parts.length; i += 2) {
+        const p = parts[i]
+      if (!p || p.kind !== ExprK.Leaf || !(p.text.length >= 2 && p.text[0] === '"' && p.text[p.text.length - 1] === '"'))
       return null;
-      iris_1825i_228.push(iris_1825i_55.text.slice(1, -1))
+      lits.push(p.text.slice(1, -1))
    }
-    for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_228.length; iris_1825i_5++) {
-		const iris_1825i_229 = iris_1825i_228[iris_1825i_5]
-      if (iris_1825i_5 === 0) { if (!iris_1825i_229.endsWith('{')) return null; }
-    else if (iris_1825i_5 === iris_1825i_228.length - 1) { if (!iris_1825i_229.startsWith("}")) return null; }
-		else if (!iris_1825i_229.startsWith("}") || !iris_1825i_229.endsWith('{')) return null
+    for (let i = 0; i < lits.length; i++) {
+		const lit = lits[i]
+      if (i === 0) { if (!lit.endsWith('{')) return null; }
+    else if (i === lits.length - 1) { if (!lit.startsWith("}")) return null; }
+		else if (!lit.startsWith("}") || !lit.endsWith('{')) return null
 	}
-  let iris_1825i_4 = '';
-	for (let iris_1825i_125 = 0; iris_1825i_125 < iris_1825i_165.length; iris_1825i_125 += 2) {
-		const iris_1825i_229 = iris_1825i_228[iris_1825i_125 / 2]
-        const iris_1825i_207 = (iris_1825i_125 + 2 >= iris_1825i_165.length)
-      if (iris_1825i_125 === 0) iris_1825i_4 += iris_1825i_229.slice(0, -1);
-    else if (iris_1825i_207) iris_1825i_4 += iris_1825i_229.slice(1)
-		else iris_1825i_4 += iris_1825i_229.slice(1, -1)
-        if (!iris_1825i_207) {
-      const iris_1825i_168 = expr_text(iris_1825i_165[iris_1825i_125 + 1])
-            if (iris_1825i_168.length === 0 || iris_1825i_168 === "nil") return null;
-			iris_1825i_4 += "{" + iris_1825i_168 + '}';
+  let out = '';
+	for (let k = 0; k < parts.length; k += 2) {
+		const lit = lits[k / 2]
+        const last = (k + 2 >= parts.length)
+      if (k === 0) out += lit.slice(0, -1);
+    else if (last) out += lit.slice(1)
+		else out += lit.slice(1, -1)
+        if (!last) {
+      const expr = expr_text(parts[k + 1])
+            if (expr.length === 0 || expr === "nil") return null;
+			out += "{" + expr + '}';
 		}
   }
-  return iris_1825i_4
+  return out
 }
 
 
-let iris_1825i_230 = 0;
+let walkDepth = 0;
 
-const iris_1825i_231 = 0, iris_1825i_232 = 1, iris_1825i_233 = 2, iris_1825i_234 = 3, iris_1825i_235 = 4;
+const LOOP_WHILE = 0, LOOP_BREAKALWAYS = 1, LOOP_REPEAT = 2, LOOP_FORNUM = 3, LOOP_FORGENERIC = 4;
 
-class iris_1825i_236 {
+class Sink {
 	constructor() { this.indent = 0; this.lines = [] }
-  push(iris_1825i_391, iris_1825i_363) { this.lines.push({ level: iris_1825i_391, text: iris_1825i_363 }) }
-  emit(iris_1825i_363) { this.lines.push({ level: this.indent, text: iris_1825i_363 }) }
+  push(level, text) { this.lines.push({ level, text }) }
+  emit(text) { this.lines.push({ level: this.indent, text }) }
 }
 
-class iris_1825i_237 {
-constructor (iris_1825i_127, iris_1825i_58, iris_1825i_393, iris_1825i_394) {
-    this.opt = iris_1825i_145
-        this.program = iris_1825i_127
-		this.proto = iris_1825i_58;
-		this.upvals = iris_1825i_393;
-    this.isMain = iris_1825i_394;
-      this.n = iris_1825i_58.code.length;
-		this.R = Math.max(iris_1825i_58.maxstack, iris_1825i_58.numparams + (iris_1825i_58.is_vararg !== 0 ? 8 : 0) + 8);
+class CompileState {
+constructor (program, proto, upvals, isMainChunk) {
+    this.opt = OPT
+        this.program = program
+		this.proto = proto;
+		this.upvals = upvals;
+    this.isMain = isMainChunk;
+      this.n = proto.code.length;
+		this.R = Math.max(proto.maxstack, proto.numparams + (proto.is_vararg !== 0 ? 8 : 0) + 8);
 
       this.reg = new Array(this.R).fill(null);
     this.regName = new Array(this.R).fill('');
@@ -1258,7 +1261,7 @@ constructor (iris_1825i_127, iris_1825i_58, iris_1825i_393, iris_1825i_394) {
 		this.captured = new Array(this.R).fill(false);
         this.strConstOf = new Map();
 
-      this.maxLocals = iris_1825i_58.numparams;
+      this.maxLocals = proto.numparams;
     this.nextV = 1
 		this.tableCount = 0
 		this.currentPc = -1;
@@ -1266,52 +1269,52 @@ constructor (iris_1825i_127, iris_1825i_58, iris_1825i_393, iris_1825i_394) {
       this.lastRetTy = null
       this.usedNames = new Set()
     this.loops = new Map();
-    this.paramUsed = new Array(iris_1825i_58.numparams).fill(false);
-      this.paramTy = new Array(iris_1825i_58.numparams).fill(null);
+    this.paramUsed = new Array(proto.numparams).fill(false);
+      this.paramTy = new Array(proto.numparams).fill(null);
 
       this.live_pass();
       this.make_loops();
 
-        for (const iris_1825i_100 of iris_1825i_58.locvars)
-         if (iris_1825i_100.name.length > 0 && iris_1825i_100.name[0] !== "(") this.usedNames.add(iris_1825i_100.name);
+        for (const lv of proto.locvars)
+         if (lv.name.length > 0 && lv.name[0] !== "(") this.usedNames.add(lv.name);
 
-      for (let iris_1825i_54 = 0; iris_1825i_54 < iris_1825i_58.numparams; iris_1825i_54++) {
-      let iris_1825i_238 = this.locv_at(iris_1825i_54, 0);
-      if (iris_1825i_238.length === 0) iris_1825i_238 = 'argument' + (iris_1825i_54 + 1);
-      this.regName[iris_1825i_54] = iris_1825i_238;
-			this.reg[iris_1825i_54] = this.leaf(iris_1825i_238)
-      this.regDeclared[iris_1825i_54] = true;
-			this.usedNames.add(iris_1825i_238);
+      for (let r = 0; r < proto.numparams; r++) {
+      let nm = this.locv_at(r, 0);
+      if (nm.length === 0) nm = 'argument' + (r + 1);
+      this.regName[r] = nm;
+			this.reg[r] = this.leaf(nm)
+      this.regDeclared[r] = true;
+			this.usedNames.add(nm);
       }
 
         this.scan_params();
 		this.scan_captures()
 	}
 scan_captures () {
-    for (let iris_1825i_5 = 0; iris_1825i_5 < this.n; iris_1825i_5++) {
-      const iris_1825i_30 = i_op(this.proto.code[iris_1825i_5]);
-			if (iris_1825i_30 === iris_1825i_13.NEWCLOSURE) {
-				const iris_1825i_135 = i_d(this.proto.code[iris_1825i_5])
-        if (iris_1825i_135 >= 0 && iris_1825i_135 < this.proto.children.length) {
-          const iris_1825i_67 = this.program.protos[this.proto.children[iris_1825i_135]]
-          for (let iris_1825i_129 = 0; iris_1825i_129 < iris_1825i_67.nups && iris_1825i_5 + 1 + iris_1825i_129 < this.n; iris_1825i_129++) {
-						const iris_1825i_136 = this.proto.code[iris_1825i_5 + 1 + iris_1825i_129]
-            if (i_a(iris_1825i_136) !== 2) {
-                            const iris_1825i_239 = i_b(iris_1825i_136);
-              if (iris_1825i_239 < this.R) this.captured[iris_1825i_239] = true;
+    for (let i = 0; i < this.n; i++) {
+      const op = i_op(this.proto.code[i]);
+			if (op === Op.NEWCLOSURE) {
+				const child = i_d(this.proto.code[i])
+        if (child >= 0 && child < this.proto.children.length) {
+          const c = this.program.protos[this.proto.children[child]]
+          for (let u = 0; u < c.nups && i + 1 + u < this.n; u++) {
+						const cap = this.proto.code[i + 1 + u]
+            if (i_a(cap) !== 2) {
+                            const src = i_b(cap);
+              if (src < this.R) this.captured[src] = true;
 						}
 					}
 				}
-			} else if (iris_1825i_30 === iris_1825i_13.DUPCLOSURE) {
-        const iris_1825i_240 = this.const_at(i_d(this.proto.code[iris_1825i_5]))
-				if (iris_1825i_240 && iris_1825i_240.kind === iris_1825i_14.Closure && iris_1825i_240.closureProto >= 0 &&
-					iris_1825i_240.closureProto < this.program.protos.length) {
-                    const iris_1825i_67 = this.program.protos[iris_1825i_240.closureProto]
-               for (let iris_1825i_129 = 0; iris_1825i_129 < iris_1825i_67.nups && iris_1825i_5 + 1 + iris_1825i_129 < this.n; iris_1825i_129++) {
-            const iris_1825i_136 = this.proto.code[iris_1825i_5 + 1 + iris_1825i_129]
-						if (i_a(iris_1825i_136) !== 2) {
-							const iris_1825i_239 = i_b(iris_1825i_136)
-              if (iris_1825i_239 < this.R) this.captured[iris_1825i_239] = true
+			} else if (op === Op.DUPCLOSURE) {
+        const cst = this.const_at(i_d(this.proto.code[i]))
+				if (cst && cst.kind === ConstK.Closure && cst.closureProto >= 0 &&
+					cst.closureProto < this.program.protos.length) {
+                    const c = this.program.protos[cst.closureProto]
+               for (let u = 0; u < c.nups && i + 1 + u < this.n; u++) {
+            const cap = this.proto.code[i + 1 + u]
+						if (i_a(cap) !== 2) {
+							const src = i_b(cap)
+              if (src < this.R) this.captured[src] = true
 						}
           }
         }
@@ -1319,300 +1322,300 @@ scan_captures () {
     }
     }
 scan_params() {
-    const iris_1825i_35 = this.proto.code
-      const iris_1825i_241 = this.proto.numparams;
-      for (let iris_1825i_5 = 0; iris_1825i_5 < this.n; iris_1825i_5++) {
-            const iris_1825i_37 = iris_1825i_35[iris_1825i_5]
-         const iris_1825i_30 = i_op(iris_1825i_37)
-      const iris_1825i_242 = i_a(iris_1825i_37), iris_1825i_243 = i_b(iris_1825i_37), iris_1825i_244 = i_c(iris_1825i_37)
-      const iris_1825i_245 = (iris_1825i_54) => { if (iris_1825i_54 < iris_1825i_241) { this.paramUsed[iris_1825i_54] = true; if (!this.paramTy[iris_1825i_54]) this.paramTy[iris_1825i_54] = ty(1, 'number') } }
-			const iris_1825i_246 = (iris_1825i_54) => { if (iris_1825i_54 < iris_1825i_241) { this.paramUsed[iris_1825i_54] = true; if (!this.paramTy[iris_1825i_54]) this.paramTy[iris_1825i_54] = ty(1, 'string') } }
-            const iris_1825i_247 = (iris_1825i_54) => { if (iris_1825i_54 < iris_1825i_241) { this.paramUsed[iris_1825i_54] = true; if (!this.paramTy[iris_1825i_54]) this.paramTy[iris_1825i_54] = ty(1, "table") } }
-      const iris_1825i_248 = (iris_1825i_54) => { if (iris_1825i_54 < iris_1825i_241) { this.paramUsed[iris_1825i_54] = true; if (!this.paramTy[iris_1825i_54]) this.paramTy[iris_1825i_54] = ty(2, "Instance") } }
-            switch (iris_1825i_30) {
-				case iris_1825i_13.ADD: case iris_1825i_13.SUB: case iris_1825i_13.MUL: case iris_1825i_13.DIV: case iris_1825i_13.MOD: case iris_1825i_13.POW: case iris_1825i_13.IDIV:
-          iris_1825i_245(iris_1825i_243); iris_1825i_245(iris_1825i_244); break;
-            case iris_1825i_13.ADDK: case iris_1825i_13.SUBK: case iris_1825i_13.MULK: case iris_1825i_13.DIVK: case iris_1825i_13.MODK: case iris_1825i_13.POWK: case iris_1825i_13.IDIVK:
-          iris_1825i_245(iris_1825i_243); break
-				case iris_1825i_13.SUBRK: case iris_1825i_13.DIVRK: iris_1825i_245(iris_1825i_244); break;
-            case iris_1825i_13.CONCAT:
-					for (let iris_1825i_54 = iris_1825i_243; iris_1825i_54 <= iris_1825i_244; iris_1825i_54++) iris_1825i_246(iris_1825i_54)
+    const code = this.proto.code
+      const P = this.proto.numparams;
+      for (let i = 0; i < this.n; i++) {
+            const insn = code[i]
+         const op = i_op(insn)
+      const A = i_a(insn), B2 = i_b(insn), C2 = i_c(insn)
+      const reg_uses_num = (r) => { if (r < P) { this.paramUsed[r] = true; if (!this.paramTy[r]) this.paramTy[r] = ty(1, 'number') } }
+			const reg_uses_str = (r) => { if (r < P) { this.paramUsed[r] = true; if (!this.paramTy[r]) this.paramTy[r] = ty(1, 'string') } }
+            const reg_uses_tbl = (r) => { if (r < P) { this.paramUsed[r] = true; if (!this.paramTy[r]) this.paramTy[r] = ty(1, "table") } }
+      const reg_uses_obj = (r) => { if (r < P) { this.paramUsed[r] = true; if (!this.paramTy[r]) this.paramTy[r] = ty(2, "Instance") } }
+            switch (op) {
+				case Op.ADD: case Op.SUB: case Op.MUL: case Op.DIV: case Op.MOD: case Op.POW: case Op.IDIV:
+          reg_uses_num(B2); reg_uses_num(C2); break;
+            case Op.ADDK: case Op.SUBK: case Op.MULK: case Op.DIVK: case Op.MODK: case Op.POWK: case Op.IDIVK:
+          reg_uses_num(B2); break
+				case Op.SUBRK: case Op.DIVRK: reg_uses_num(C2); break;
+            case Op.CONCAT:
+					for (let r = B2; r <= C2; r++) reg_uses_str(r)
           break
-				case iris_1825i_13.MINUS: case iris_1825i_13.LENGTH: case iris_1825i_13.NOT:
-					iris_1825i_245(iris_1825i_243); break;
-        case iris_1825i_13.GETTABLEKS: case iris_1825i_13.SETTABLEKS: case iris_1825i_13.GETUDATAKS: case iris_1825i_13.SETUDATAKS:
-                    iris_1825i_248(iris_1825i_243); break;
-        case iris_1825i_13.GETTABLE: case iris_1825i_13.SETTABLE: case iris_1825i_13.GETTABLEN: case iris_1825i_13.SETTABLEN:
-					iris_1825i_247(iris_1825i_243); break
-        case iris_1825i_13.NAMECALL: case iris_1825i_13.NAMECALLUDATA:
-          iris_1825i_248(iris_1825i_243); break;
-				case iris_1825i_13.JUMPIF: case iris_1825i_13.JUMPIFNOT:
-               if (iris_1825i_242 < iris_1825i_241) this.paramUsed[iris_1825i_242] = true;
+				case Op.MINUS: case Op.LENGTH: case Op.NOT:
+					reg_uses_num(B2); break;
+        case Op.GETTABLEKS: case Op.SETTABLEKS: case Op.GETUDATAKS: case Op.SETUDATAKS:
+                    reg_uses_obj(B2); break;
+        case Op.GETTABLE: case Op.SETTABLE: case Op.GETTABLEN: case Op.SETTABLEN:
+					reg_uses_tbl(B2); break
+        case Op.NAMECALL: case Op.NAMECALLUDATA:
+          reg_uses_obj(B2); break;
+				case Op.JUMPIF: case Op.JUMPIFNOT:
+               if (A < P) this.paramUsed[A] = true;
           break
-				case iris_1825i_13.JUMPIFEQ: case iris_1825i_13.JUMPIFLE: case iris_1825i_13.JUMPIFLT:
-            case iris_1825i_13.JUMPIFNOTEQ: case iris_1825i_13.JUMPIFNOTLE: case iris_1825i_13.JUMPIFNOTLT:
-          iris_1825i_245(iris_1825i_242)
-					if (iris_1825i_5 + 1 < this.n) iris_1825i_245(aux_a(iris_1825i_35[iris_1825i_5 + 1]))
+				case Op.JUMPIFEQ: case Op.JUMPIFLE: case Op.JUMPIFLT:
+            case Op.JUMPIFNOTEQ: case Op.JUMPIFNOTLE: case Op.JUMPIFNOTLT:
+          reg_uses_num(A)
+					if (i + 1 < this.n) reg_uses_num(aux_a(code[i + 1]))
                     break;
-                case iris_1825i_13.JUMPXEQKB: case iris_1825i_13.JUMPXEQKNIL:
-               if (iris_1825i_242 < iris_1825i_241) this.paramUsed[iris_1825i_242] = true;
+                case Op.JUMPXEQKB: case Op.JUMPXEQKNIL:
+               if (A < P) this.paramUsed[A] = true;
           break;
-        case iris_1825i_13.JUMPXEQKN: case iris_1825i_13.JUMPXEQKS:
-               if (iris_1825i_242 < iris_1825i_241) this.paramUsed[iris_1825i_242] = true
+        case Op.JUMPXEQKN: case Op.JUMPXEQKS:
+               if (A < P) this.paramUsed[A] = true
                break;
         default: break
             }
     }
   }
-const_at (iris_1825i_119) {
-		if (iris_1825i_119 < 0 || iris_1825i_119 >= this.proto.k.length) return null;
-    return this.proto.k[iris_1825i_119]
+const_at (idx) {
+		if (idx < 0 || idx >= this.proto.k.length) return null;
+    return this.proto.k[idx]
   }
-const_from (iris_1825i_119) {
-		const iris_1825i_67 = this.const_at(iris_1825i_119);
-    return iris_1825i_67 ? val_text(iris_1825i_67) : "??";
+const_from (idx) {
+		const c = this.const_at(idx);
+    return c ? val_text(c) : "??";
   }
-import_path (iris_1825i_72) {
-      // top 2 bits = path length, then three 10-bit string ids
-const iris_1825i_82 = iris_1825i_72 >>> 30
-    const iris_1825i_149 = (iris_1825i_72 >>> 20) & 1023
-      const iris_1825i_7 = (iris_1825i_72 >>> 10) & 1023;
-        const iris_1825i_8 = iris_1825i_72 & 1023
-		const iris_1825i_118 = (iris_1825i_249) => {
-			const iris_1825i_67 = this.const_at(iris_1825i_249)
-      return (iris_1825i_67 && iris_1825i_67.kind === iris_1825i_14.String) ? iris_1825i_67.str : "?";
+import_path (id) {
+      
+const count = id >>> 30
+    const c0 = (id >>> 20) & 1023
+      const c1 = (id >>> 10) & 1023;
+        const c2 = id & 1023
+		const name = (ci) => {
+			const c = this.const_at(ci)
+      return (c && c.kind === ConstK.String) ? c.str : "?";
     }
-      let iris_1825i_55 = iris_1825i_118(iris_1825i_149)
-    if (iris_1825i_82 >= 2) iris_1825i_55 += '.' + iris_1825i_118(iris_1825i_7);
-        if (iris_1825i_82 >= 3) iris_1825i_55 += '.' + iris_1825i_118(iris_1825i_8);
-    return iris_1825i_55
+      let p = name(c0)
+    if (count >= 2) p += '.' + name(c1);
+        if (count >= 3) p += '.' + name(c2);
+    return p
   }
-locv_at (iris_1825i_543, iris_1825i_477, iris_1825i_544) {
-    for (const iris_1825i_100 of this.proto.locvars) {
-            if (iris_1825i_100.reg !== iris_1825i_543) continue;
-			if (iris_1825i_100.name.length > 0 && iris_1825i_100.name[0] === '(') continue;
-			if (iris_1825i_477 >= iris_1825i_100.startpc && iris_1825i_477 < iris_1825i_100.endpc) {
-        if (iris_1825i_544 && iris_1825i_100.startpc === iris_1825i_477) iris_1825i_544.v = true
-				return iris_1825i_100.name
+locv_at (regIdx, at, isDecl) {
+    for (const lv of this.proto.locvars) {
+            if (lv.reg !== regIdx) continue;
+			if (lv.name.length > 0 && lv.name[0] === '(') continue;
+			if (at >= lv.startpc && at < lv.endpc) {
+        if (isDecl && lv.startpc === at) isDecl.v = true
+				return lv.name
       }
     }
 		return ""
 	}
-locv_name(iris_1825i_543, iris_1825i_477) {
-    for (const iris_1825i_100 of this.proto.locvars) {
-			if (iris_1825i_100.reg === iris_1825i_543 && iris_1825i_100.name.length > 0 && iris_1825i_100.name[0] !== "(") {
-                if (iris_1825i_477 >= iris_1825i_100.startpc && iris_1825i_477 < iris_1825i_100.endpc) return iris_1825i_100.name;
+locv_name(regIdx, at) {
+    for (const lv of this.proto.locvars) {
+			if (lv.reg === regIdx && lv.name.length > 0 && lv.name[0] !== "(") {
+                if (at >= lv.startpc && at < lv.endpc) return lv.name;
          }
         }
     return '';
   }
-fresh_name (iris_1825i_204, iris_1825i_545) {
-      const iris_1825i_250 = this.opt.generatedNames !== 'readable';
+fresh_name (prefix, hintTy) {
+      const compact = this.opt.generatedNames !== 'readable';
       for (;;) {
-			const iris_1825i_251 = this.nextV++
-      let iris_1825i_252;
-      if (iris_1825i_250 || (iris_1825i_204 !== undefined && iris_1825i_204 !== "v")) {
-        iris_1825i_252 = iris_1825i_204 + iris_1825i_251
+			const n = this.nextV++
+      let cand;
+      if (compact || (prefix !== undefined && prefix !== "v")) {
+        cand = prefix + n
 } else {
-			const iris_1825i_179 = iris_1825i_545 ? typed_prefix(iris_1825i_545) : "variable"
-            iris_1825i_252 = iris_1825i_179 + iris_1825i_251
+			const base = hintTy ? typed_prefix(hintTy) : "variable"
+            cand = base + n
         }
-      if (this.usedNames.add(iris_1825i_252)) return iris_1825i_252;
+      if (this.usedNames.add(cand)) return cand;
     }
 	}
 fresh_table_name () {
 		for (;;) {
-			const iris_1825i_252 = "table" + (this.tableCount + 1);
+			const cand = "table" + (this.tableCount + 1);
             this.tableCount++
-			if (this.usedNames.add(iris_1825i_252)) return iris_1825i_252;
+			if (this.usedNames.add(cand)) return cand;
     }
     }
-name_reg (iris_1825i_54, iris_1825i_118) {
-    this.regName[iris_1825i_54] = iris_1825i_118
-		this.reg[iris_1825i_54] = this.leaf(iris_1825i_118)
+name_reg (r, name) {
+    this.regName[r] = name
+		this.reg[r] = this.leaf(name)
     }
-nuke_reg (iris_1825i_54) {
-        if (iris_1825i_54 < 0 || iris_1825i_54 >= this.R) return
-        this.regOrigin[iris_1825i_54] = null
-    this.reg[iris_1825i_54] = null
-      this.regName[iris_1825i_54] = "";
-		this.regDeclared[iris_1825i_54] = false
-    this.regTy[iris_1825i_54] = null;
-    this.methodInfo[iris_1825i_54] = null
+nuke_reg (r) {
+        if (r < 0 || r >= this.R) return
+        this.regOrigin[r] = null
+    this.reg[r] = null
+      this.regName[r] = "";
+		this.regDeclared[r] = false
+    this.regTy[r] = null;
+    this.methodInfo[r] = null
    }
-up_name(iris_1825i_546) {
-		if (iris_1825i_546 >= 0 && iris_1825i_546 < this.upvals.length && this.upvals[iris_1825i_546].name.length > 0) return this.upvals[iris_1825i_546].name
-    if (iris_1825i_546 >= 0 && iris_1825i_546 < this.proto.upnames.length && this.proto.upnames[iris_1825i_546].length > 0 &&
-			this.proto.upnames[iris_1825i_546][0] !== "(") return this.proto.upnames[iris_1825i_546]
-		return "u" + iris_1825i_546;
+up_name(slot) {
+		if (slot >= 0 && slot < this.upvals.length && this.upvals[slot].name.length > 0) return this.upvals[slot].name
+    if (slot >= 0 && slot < this.proto.upnames.length && this.proto.upnames[slot].length > 0 &&
+			this.proto.upnames[slot][0] !== "(") return this.proto.upnames[slot]
+		return "u" + slot;
 	}
-cap_name (iris_1825i_4, iris_1825i_477, iris_1825i_239) {
-		if (iris_1825i_239 < this.proto.numparams)
-      return this.regName[iris_1825i_239].length === 0 ? ("argument" + (iris_1825i_239 + 1)) : this.regName[iris_1825i_239]
-    const iris_1825i_238 = this.locv_name(iris_1825i_239, iris_1825i_477);
-      if (iris_1825i_238.length > 0) return iris_1825i_238;
-		if (this.regName[iris_1825i_239].length > 0) return this.regName[iris_1825i_239]
-    this.force_local(iris_1825i_4, iris_1825i_239);
-    return this.regName[iris_1825i_239]
+cap_name (out, at, src) {
+		if (src < this.proto.numparams)
+      return this.regName[src].length === 0 ? ("argument" + (src + 1)) : this.regName[src]
+    const nm = this.locv_name(src, at);
+      if (nm.length > 0) return nm;
+		if (this.regName[src].length > 0) return this.regName[src]
+    this.force_local(out, src);
+    return this.regName[src]
     }
 
-  leaf(iris_1825i_46) { const iris_1825i_123 = make_expr(iris_1825i_158.Leaf); iris_1825i_123.text = iris_1825i_46; iris_1825i_123.ty = ty_expr(iris_1825i_123); return iris_1825i_123 }
-bin(iris_1825i_30, iris_1825i_23, iris_1825i_47, iris_1825i_384, iris_1825i_218) {
-      const iris_1825i_123 = make_expr(iris_1825i_158.Bin);
-		iris_1825i_123.op = iris_1825i_30; iris_1825i_123.a = iris_1825i_23; iris_1825i_123.b = iris_1825i_47; iris_1825i_123.prec = iris_1825i_384; iris_1825i_123.rightAssoc = !!iris_1825i_218; iris_1825i_123.ty = ty_expr(iris_1825i_123);
-		return iris_1825i_123;
+  leaf(s) { const e = make_expr(ExprK.Leaf); e.text = s; e.ty = ty_expr(e); return e }
+bin(op, a, b, prec, rightAssoc) {
+      const e = make_expr(ExprK.Bin);
+		e.op = op; e.a = a; e.b = b; e.prec = prec; e.rightAssoc = !!rightAssoc; e.ty = ty_expr(e);
+		return e;
   }
-un(iris_1825i_30, iris_1825i_23) {
-      const iris_1825i_123 = make_expr(iris_1825i_158.Un);
-		iris_1825i_123.op = iris_1825i_30; iris_1825i_123.a = iris_1825i_23; iris_1825i_123.prec = 8; iris_1825i_123.ty = ty_expr(iris_1825i_123)
-    return iris_1825i_123;
+un(op, a) {
+      const e = make_expr(ExprK.Un);
+		e.op = op; e.a = a; e.prec = 8; e.ty = ty_expr(e)
+    return e;
 	}
-idx (iris_1825i_179, iris_1825i_51) {
-    const iris_1825i_123 = make_expr(iris_1825i_158.Index);
-    iris_1825i_123.a = iris_1825i_179; iris_1825i_123.b = iris_1825i_51; iris_1825i_123.prec = 9; iris_1825i_123.ty = ty_expr(iris_1825i_123);
-		return iris_1825i_123;
+idx (base, key) {
+    const e = make_expr(ExprK.Index);
+    e.a = base; e.b = key; e.prec = 9; e.ty = ty_expr(e);
+		return e;
   }
-dot (iris_1825i_179, iris_1825i_118) {
-		const iris_1825i_123 = make_expr(iris_1825i_158.Dot)
-    iris_1825i_123.a = iris_1825i_179; iris_1825i_123.name = iris_1825i_118; iris_1825i_123.prec = 9; iris_1825i_123.ty = ty_expr(iris_1825i_123);
-    return iris_1825i_123;
+dot (base, name) {
+		const e = make_expr(ExprK.Dot)
+    e.a = base; e.name = name; e.prec = 9; e.ty = ty_expr(e);
+    return e;
     }
-call(iris_1825i_322, iris_1825i_317) {
-    const iris_1825i_123 = make_expr(iris_1825i_158.Call)
-        iris_1825i_123.a = iris_1825i_322; iris_1825i_123.args = iris_1825i_317; iris_1825i_123.prec = 9; iris_1825i_123.ty = ty_call(iris_1825i_322 ? expr_text(iris_1825i_322) : '', iris_1825i_322);
-      return iris_1825i_123;
+call(callee, args) {
+    const e = make_expr(ExprK.Call)
+        e.a = callee; e.args = args; e.prec = 9; e.ty = ty_call(callee ? expr_text(callee) : '', callee);
+      return e;
 	}
-method_call(iris_1825i_179, iris_1825i_118, iris_1825i_317) {
-      const iris_1825i_123 = make_expr(iris_1825i_158.MethodCall)
-    iris_1825i_123.a = iris_1825i_179; iris_1825i_123.name = iris_1825i_118; iris_1825i_123.args = iris_1825i_317; iris_1825i_123.prec = 9; iris_1825i_123.ty = ty_call(iris_1825i_118, iris_1825i_179)
-    return iris_1825i_123
+method_call(base, name, args) {
+      const e = make_expr(ExprK.MethodCall)
+    e.a = base; e.name = name; e.args = args; e.prec = 9; e.ty = ty_call(name, base)
+    return e
   }
-if_else (iris_1825i_287, iris_1825i_298, iris_1825i_297) {
-    const iris_1825i_123 = make_expr(iris_1825i_158.IfElse)
-		iris_1825i_123.a = iris_1825i_287; iris_1825i_123.b = iris_1825i_298; iris_1825i_123.c = iris_1825i_297; iris_1825i_123.prec = 0; iris_1825i_123.ty = ty_expr(iris_1825i_298) || ty_expr(iris_1825i_297);
-        return iris_1825i_123
+if_else (cond, thenVal, elseVal) {
+    const e = make_expr(ExprK.IfElse)
+		e.a = cond; e.b = thenVal; e.c = elseVal; e.prec = 0; e.ty = ty_expr(thenVal) || ty_expr(elseVal);
+        return e
 	}
-read_reg (iris_1825i_54) {
-        if (iris_1825i_54 >= this.R) return this.leaf("?")
-		if (this.reg[iris_1825i_54]) return this.reg[iris_1825i_54]
-      if (this.regName[iris_1825i_54].length > 0) return this.leaf(this.regName[iris_1825i_54])
-        if (this.regOrigin[iris_1825i_54]) return this.regOrigin[iris_1825i_54]
-    if (iris_1825i_54 < this.proto.numparams)
-         return this.leaf(this.regName[iris_1825i_54].length === 0 ? ('argument' + (iris_1825i_54 + 1)) : this.regName[iris_1825i_54]);
+read_reg (r) {
+        if (r >= this.R) return this.leaf("?")
+		if (this.reg[r]) return this.reg[r]
+      if (this.regName[r].length > 0) return this.leaf(this.regName[r])
+        if (this.regOrigin[r]) return this.regOrigin[r]
+    if (r < this.proto.numparams)
+         return this.leaf(this.regName[r].length === 0 ? ('argument' + (r + 1)) : this.regName[r]);
 		if (this.currentPc >= 0) {
-			const iris_1825i_238 = this.locv_name(iris_1825i_54, this.currentPc)
-      if (iris_1825i_238.length > 0) return this.leaf(iris_1825i_238)
+			const nm = this.locv_name(r, this.currentPc)
+      if (nm.length > 0) return this.leaf(nm)
 		}
     return this.leaf("nil");
   }
-reg_uses (iris_1825i_477, iris_1825i_37, iris_1825i_30, iris_1825i_262, iris_1825i_263) {
-    const iris_1825i_253 = (iris_1825i_54) => { if (iris_1825i_54 >= 0 && iris_1825i_54 < this.R) iris_1825i_263.push(iris_1825i_54) }
-        const iris_1825i_254 = (iris_1825i_54) => { if (iris_1825i_54 >= 0 && iris_1825i_54 < this.R) iris_1825i_262.push(iris_1825i_54) }
+reg_uses (at, insn, op, defs, uses) {
+    const use_r = (r) => { if (r >= 0 && r < this.R) uses.push(r) }
+        const def_r = (r) => { if (r >= 0 && r < this.R) defs.push(r) }
 
-        switch (iris_1825i_30) {
-            case iris_1825i_13.MOVE: iris_1825i_254(i_a(iris_1825i_37)); iris_1825i_253(i_b(iris_1825i_37)); break
-         case iris_1825i_13.LOADNIL: {
-				const iris_1825i_47 = i_b(iris_1825i_37);
-                for (let iris_1825i_54 = i_a(iris_1825i_37); iris_1825i_54 <= i_a(iris_1825i_37) + iris_1825i_47; iris_1825i_54++) iris_1825i_254(iris_1825i_54)
+        switch (op) {
+            case Op.MOVE: def_r(i_a(insn)); use_r(i_b(insn)); break
+         case Op.LOADNIL: {
+				const b = i_b(insn);
+                for (let r = i_a(insn); r <= i_a(insn) + b; r++) def_r(r)
         break
       }
-      case iris_1825i_13.LOADB: case iris_1825i_13.LOADN: case iris_1825i_13.LOADK: case iris_1825i_13.LOADKX:
-			case iris_1825i_13.GETGLOBAL: case iris_1825i_13.GETUPVAL: case iris_1825i_13.GETIMPORT: case iris_1825i_13.GETTABLE:
-         case iris_1825i_13.GETTABLEKS: case iris_1825i_13.GETTABLEN: case iris_1825i_13.GETUDATAKS: case iris_1825i_13.NEWTABLE:
-			case iris_1825i_13.DUPTABLE: case iris_1825i_13.NEWCLOSURE: case iris_1825i_13.DUPCLOSURE: case iris_1825i_13.NOT:
-			case iris_1825i_13.MINUS: case iris_1825i_13.LENGTH: case iris_1825i_13.GETVARARGS:
-        iris_1825i_254(i_a(iris_1825i_37)); break;
+      case Op.LOADB: case Op.LOADN: case Op.LOADK: case Op.LOADKX:
+			case Op.GETGLOBAL: case Op.GETUPVAL: case Op.GETIMPORT: case Op.GETTABLE:
+         case Op.GETTABLEKS: case Op.GETTABLEN: case Op.GETUDATAKS: case Op.NEWTABLE:
+			case Op.DUPTABLE: case Op.NEWCLOSURE: case Op.DUPCLOSURE: case Op.NOT:
+			case Op.MINUS: case Op.LENGTH: case Op.GETVARARGS:
+        def_r(i_a(insn)); break;
       default: break
 		}
 
-        switch (iris_1825i_30) {
-      case iris_1825i_13.GETTABLE: case iris_1825i_13.SETTABLE:
-                iris_1825i_253(i_b(iris_1825i_37)); iris_1825i_253(i_c(iris_1825i_37)); break
-            case iris_1825i_13.GETTABLEKS: case iris_1825i_13.SETTABLEKS: case iris_1825i_13.GETUDATAKS: case iris_1825i_13.SETUDATAKS:
-			case iris_1825i_13.GETTABLEN: case iris_1825i_13.SETTABLEN:
-				iris_1825i_253(i_b(iris_1825i_37)); break;
-            case iris_1825i_13.SETGLOBAL: case iris_1825i_13.SETUPVAL:
-            iris_1825i_253(i_a(iris_1825i_37)); break
-      case iris_1825i_13.NAMECALL: case iris_1825i_13.NAMECALLUDATA:
-				iris_1825i_253(i_b(iris_1825i_37)); break;
-      case iris_1825i_13.CALL: case iris_1825i_13.CALLFB: {
-				const iris_1825i_242 = i_a(iris_1825i_37)
-        const iris_1825i_255 = i_b(iris_1825i_37);
-                const iris_1825i_256 = i_c(iris_1825i_37)
-        const iris_1825i_257 = (iris_1825i_255 === 0) ? -1 : iris_1825i_255 - 1
-				iris_1825i_253(iris_1825i_242);
-                if (iris_1825i_257 > 0) for (let iris_1825i_5 = 1; iris_1825i_5 <= iris_1825i_257; iris_1825i_5++) iris_1825i_253(iris_1825i_242 + iris_1825i_5);
-                const iris_1825i_258 = (iris_1825i_256 === 0) ? -1 : iris_1825i_256 - 1
-        if (iris_1825i_258 > 0) for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_258; iris_1825i_5++) iris_1825i_254(iris_1825i_242 + iris_1825i_5);
+        switch (op) {
+      case Op.GETTABLE: case Op.SETTABLE:
+                use_r(i_b(insn)); use_r(i_c(insn)); break
+            case Op.GETTABLEKS: case Op.SETTABLEKS: case Op.GETUDATAKS: case Op.SETUDATAKS:
+			case Op.GETTABLEN: case Op.SETTABLEN:
+				use_r(i_b(insn)); break;
+            case Op.SETGLOBAL: case Op.SETUPVAL:
+            use_r(i_a(insn)); break
+      case Op.NAMECALL: case Op.NAMECALLUDATA:
+				use_r(i_b(insn)); break;
+      case Op.CALL: case Op.CALLFB: {
+				const A = i_a(insn)
+        const B = i_b(insn);
+                const C = i_c(insn)
+        const nargs = (B === 0) ? -1 : B - 1
+				use_r(A);
+                if (nargs > 0) for (let i = 1; i <= nargs; i++) use_r(A + i);
+                const nres = (C === 0) ? -1 : C - 1
+        if (nres > 0) for (let i = 0; i < nres; i++) def_r(A + i);
                 break
       }
-            case iris_1825i_13.RETURN: {
-				const iris_1825i_47 = i_b(iris_1825i_37)
-        if (iris_1825i_47 >= 2) {
-          for (let iris_1825i_54 = i_a(iris_1825i_37); iris_1825i_54 < i_a(iris_1825i_37) + iris_1825i_47 - 1; iris_1825i_54++) iris_1825i_253(iris_1825i_54)
-            } else if (iris_1825i_47 === 0) {
-          iris_1825i_253(i_a(iris_1825i_37));
+            case Op.RETURN: {
+				const b = i_b(insn)
+        if (b >= 2) {
+          for (let r = i_a(insn); r < i_a(insn) + b - 1; r++) use_r(r)
+            } else if (b === 0) {
+          use_r(i_a(insn));
                 }
         break
 			}
-      case iris_1825i_13.JUMPIF: case iris_1825i_13.JUMPIFNOT: case iris_1825i_13.JUMPXEQKNIL: case iris_1825i_13.JUMPXEQKB:
-			case iris_1825i_13.JUMPXEQKN: case iris_1825i_13.JUMPXEQKS:
-                iris_1825i_253(i_a(iris_1825i_37)); break
-      case iris_1825i_13.JUMPIFEQ: case iris_1825i_13.JUMPIFLE: case iris_1825i_13.JUMPIFLT: case iris_1825i_13.JUMPIFNOTEQ:
-            case iris_1825i_13.JUMPIFNOTLE: case iris_1825i_13.JUMPIFNOTLT:
-            iris_1825i_253(i_a(iris_1825i_37))
-                if (iris_1825i_477 + 1 < this.n) iris_1825i_253(aux_a(this.proto.code[iris_1825i_477 + 1]))
+      case Op.JUMPIF: case Op.JUMPIFNOT: case Op.JUMPXEQKNIL: case Op.JUMPXEQKB:
+			case Op.JUMPXEQKN: case Op.JUMPXEQKS:
+                use_r(i_a(insn)); break
+      case Op.JUMPIFEQ: case Op.JUMPIFLE: case Op.JUMPIFLT: case Op.JUMPIFNOTEQ:
+            case Op.JUMPIFNOTLE: case Op.JUMPIFNOTLT:
+            use_r(i_a(insn))
+                if (at + 1 < this.n) use_r(aux_a(this.proto.code[at + 1]))
 				break
-         case iris_1825i_13.ADD: case iris_1825i_13.SUB: case iris_1825i_13.MUL: case iris_1825i_13.DIV: case iris_1825i_13.MOD: case iris_1825i_13.POW:
-      case iris_1825i_13.IDIV: case iris_1825i_13.AND: case iris_1825i_13.OR:
-        iris_1825i_253(i_b(iris_1825i_37)); iris_1825i_253(i_c(iris_1825i_37)); break
-			case iris_1825i_13.ADDK: case iris_1825i_13.SUBK: case iris_1825i_13.MULK: case iris_1825i_13.DIVK: case iris_1825i_13.MODK: case iris_1825i_13.POWK:
-      case iris_1825i_13.ANDK: case iris_1825i_13.ORK: case iris_1825i_13.IDIVK:
-            iris_1825i_253(i_b(iris_1825i_37)); break
-      case iris_1825i_13.SUBRK: case iris_1825i_13.DIVRK:
-            iris_1825i_253(i_c(iris_1825i_37)); break
-      case iris_1825i_13.CONCAT:
-				for (let iris_1825i_54 = i_b(iris_1825i_37); iris_1825i_54 <= i_c(iris_1825i_37); iris_1825i_54++) iris_1825i_253(iris_1825i_54)
+         case Op.ADD: case Op.SUB: case Op.MUL: case Op.DIV: case Op.MOD: case Op.POW:
+      case Op.IDIV: case Op.AND: case Op.OR:
+        use_r(i_b(insn)); use_r(i_c(insn)); break
+			case Op.ADDK: case Op.SUBK: case Op.MULK: case Op.DIVK: case Op.MODK: case Op.POWK:
+      case Op.ANDK: case Op.ORK: case Op.IDIVK:
+            use_r(i_b(insn)); break
+      case Op.SUBRK: case Op.DIVRK:
+            use_r(i_c(insn)); break
+      case Op.CONCAT:
+				for (let r = i_b(insn); r <= i_c(insn); r++) use_r(r)
         break;
-      case iris_1825i_13.SETLIST: {
-        const iris_1825i_259 = (i_c(iris_1825i_37) === 0) ? 1 : i_c(iris_1825i_37) - 1
-				for (let iris_1825i_54 = i_b(iris_1825i_37); iris_1825i_54 < i_b(iris_1825i_37) + iris_1825i_259; iris_1825i_54++) iris_1825i_253(iris_1825i_54);
+      case Op.SETLIST: {
+        const cnt = (i_c(insn) === 0) ? 1 : i_c(insn) - 1
+				for (let r = i_b(insn); r < i_b(insn) + cnt; r++) use_r(r);
         break
             }
-			case iris_1825i_13.NEWCLOSURE: {
-        const iris_1825i_135 = i_d(iris_1825i_37)
-                if (iris_1825i_135 >= 0 && iris_1825i_135 < this.proto.children.length) {
-					const iris_1825i_67 = this.program.protos[this.proto.children[iris_1825i_135]]
-          for (let iris_1825i_129 = 0; iris_1825i_129 < iris_1825i_67.nups; iris_1825i_129++) {
-            if (iris_1825i_477 + 1 + iris_1825i_129 >= this.n) break;
-						const iris_1825i_136 = this.proto.code[iris_1825i_477 + 1 + iris_1825i_129]
-            if (i_a(iris_1825i_136) !== 2) iris_1825i_253(i_b(iris_1825i_136))
+			case Op.NEWCLOSURE: {
+        const child = i_d(insn)
+                if (child >= 0 && child < this.proto.children.length) {
+					const c = this.program.protos[this.proto.children[child]]
+          for (let u = 0; u < c.nups; u++) {
+            if (at + 1 + u >= this.n) break;
+						const cap = this.proto.code[at + 1 + u]
+            if (i_a(cap) !== 2) use_r(i_b(cap))
           }
                 }
             break;
             }
-			case iris_1825i_13.DUPCLOSURE: {
-        const iris_1825i_240 = this.const_at(i_d(iris_1825i_37))
-                if (iris_1825i_240 && iris_1825i_240.kind === iris_1825i_14.Closure && iris_1825i_240.closureProto >= 0 &&
-					iris_1825i_240.closureProto < this.program.protos.length) {
-          const iris_1825i_67 = this.program.protos[iris_1825i_240.closureProto]
-                    for (let iris_1825i_129 = 0; iris_1825i_129 < iris_1825i_67.nups && iris_1825i_477 + 1 + iris_1825i_129 < this.n; iris_1825i_129++) {
-                  const iris_1825i_136 = this.proto.code[iris_1825i_477 + 1 + iris_1825i_129]
-            if (i_a(iris_1825i_136) !== 2) iris_1825i_253(i_b(iris_1825i_136));
+			case Op.DUPCLOSURE: {
+        const cst = this.const_at(i_d(insn))
+                if (cst && cst.kind === ConstK.Closure && cst.closureProto >= 0 &&
+					cst.closureProto < this.program.protos.length) {
+          const c = this.program.protos[cst.closureProto]
+                    for (let u = 0; u < c.nups && at + 1 + u < this.n; u++) {
+                  const cap = this.proto.code[at + 1 + u]
+            if (i_a(cap) !== 2) use_r(i_b(cap));
                }
 				}
         break
       }
-			case iris_1825i_13.FORNPREP:
-        iris_1825i_253(i_a(iris_1825i_37)); iris_1825i_253(i_a(iris_1825i_37) + 1); iris_1825i_253(i_a(iris_1825i_37) + 2); break;
-      case iris_1825i_13.FORNLOOP:
-        iris_1825i_254(i_a(iris_1825i_37) + 3); break;
-            case iris_1825i_13.FORGPREP: case iris_1825i_13.FORGPREP_INEXT: case iris_1825i_13.FORGPREP_NEXT:
-            iris_1825i_253(i_a(iris_1825i_37)); iris_1825i_253(i_a(iris_1825i_37) + 1); iris_1825i_253(i_a(iris_1825i_37) + 2); break;
-      case iris_1825i_13.FORGLOOP:
-                if (iris_1825i_477 + 1 < this.n) {
-					const iris_1825i_260 = this.proto.code[iris_1825i_477 + 1] & 0xff;
-               for (let iris_1825i_125 = 0; iris_1825i_125 < iris_1825i_260; iris_1825i_125++) iris_1825i_254(i_a(iris_1825i_37) + 3 + iris_1825i_125);
+			case Op.FORNPREP:
+        use_r(i_a(insn)); use_r(i_a(insn) + 1); use_r(i_a(insn) + 2); break;
+      case Op.FORNLOOP:
+        def_r(i_a(insn) + 3); break;
+            case Op.FORGPREP: case Op.FORGPREP_INEXT: case Op.FORGPREP_NEXT:
+            use_r(i_a(insn)); use_r(i_a(insn) + 1); use_r(i_a(insn) + 2); break;
+      case Op.FORGLOOP:
+                if (at + 1 < this.n) {
+					const vc = this.proto.code[at + 1] & 0xff;
+               for (let k = 0; k < vc; k++) def_r(i_a(insn) + 3 + k);
         }
             break
       default: break;
@@ -1622,33 +1625,33 @@ reg_uses (iris_1825i_477, iris_1825i_37, iris_1825i_30, iris_1825i_262, iris_182
 
 live_pass () {
       this.liveOut = new Array(this.n);
-    for (let iris_1825i_5 = 0; iris_1825i_5 < this.n; iris_1825i_5++) this.liveOut[iris_1825i_5] = new Array(this.R).fill(false)
-		const iris_1825i_261 = new Array(this.R).fill(false)
-      const iris_1825i_262 = []
-    const iris_1825i_263 = []
+    for (let i = 0; i < this.n; i++) this.liveOut[i] = new Array(this.R).fill(false)
+		const liveIn = new Array(this.R).fill(false)
+      const defs = []
+    const uses = []
 
-    for (let iris_1825i_264 = 0; iris_1825i_264 < 4; iris_1825i_264++) {
-      for (let iris_1825i_265 = this.n - 1; iris_1825i_265 >= 0; iris_1825i_265--) {
-            const iris_1825i_37 = this.proto.code[iris_1825i_265]
-                this.reg_uses(iris_1825i_265, iris_1825i_37, i_op(iris_1825i_37), iris_1825i_262, iris_1825i_263);
-        iris_1825i_261.fill(false);
-        for (let iris_1825i_5 = 0; iris_1825i_5 < this.R; iris_1825i_5++) iris_1825i_261[iris_1825i_5] = this.liveOut[iris_1825i_265][iris_1825i_5]
-                for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_262.length; iris_1825i_5++) if (iris_1825i_262[iris_1825i_5] < this.R) iris_1825i_261[iris_1825i_262[iris_1825i_5]] = false;
-                for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_263.length; iris_1825i_5++) if (iris_1825i_263[iris_1825i_5] < this.R) iris_1825i_261[iris_1825i_263[iris_1825i_5]] = true
-				if (iris_1825i_265 > 0) this.liveOut[iris_1825i_265 - 1] = iris_1825i_261.slice()
+    for (let iter = 0; iter < 4; iter++) {
+      for (let ipc = this.n - 1; ipc >= 0; ipc--) {
+            const insn = this.proto.code[ipc]
+                this.reg_uses(ipc, insn, i_op(insn), defs, uses);
+        liveIn.fill(false);
+        for (let i = 0; i < this.R; i++) liveIn[i] = this.liveOut[ipc][i]
+                for (let i = 0; i < defs.length; i++) if (defs[i] < this.R) liveIn[defs[i]] = false;
+                for (let i = 0; i < uses.length; i++) if (uses[i] < this.R) liveIn[uses[i]] = true
+				if (ipc > 0) this.liveOut[ipc - 1] = liveIn.slice()
          }
         }
     }
-alive (iris_1825i_119, iris_1825i_54) {
-		if (iris_1825i_119 < 0 || iris_1825i_119 >= this.n || iris_1825i_54 < 0 || iris_1825i_54 >= this.R) return false;
-      if (iris_1825i_54 >= this.liveOut[iris_1825i_119].length) return false
-        return this.liveOut[iris_1825i_119][iris_1825i_54]
+alive (idx, r) {
+		if (idx < 0 || idx >= this.n || r < 0 || r >= this.R) return false;
+      if (r >= this.liveOut[idx].length) return false
+        return this.liveOut[idx][r]
   }
-is_cond_jump (iris_1825i_30) {
-        switch (iris_1825i_30) {
-      case iris_1825i_13.JUMPIF: case iris_1825i_13.JUMPIFNOT: case iris_1825i_13.JUMPIFEQ: case iris_1825i_13.JUMPIFLE:
-         case iris_1825i_13.JUMPIFLT: case iris_1825i_13.JUMPIFNOTEQ: case iris_1825i_13.JUMPIFNOTLE: case iris_1825i_13.JUMPIFNOTLT:
-      case iris_1825i_13.JUMPXEQKNIL: case iris_1825i_13.JUMPXEQKB: case iris_1825i_13.JUMPXEQKN: case iris_1825i_13.JUMPXEQKS:
+is_cond_jump (op) {
+        switch (op) {
+      case Op.JUMPIF: case Op.JUMPIFNOT: case Op.JUMPIFEQ: case Op.JUMPIFLE:
+         case Op.JUMPIFLT: case Op.JUMPIFNOTEQ: case Op.JUMPIFNOTLE: case Op.JUMPIFNOTLT:
+      case Op.JUMPXEQKNIL: case Op.JUMPXEQKB: case Op.JUMPXEQKN: case Op.JUMPXEQKS:
 				return true;
 			default:
 				return false
@@ -1656,1372 +1659,1372 @@ is_cond_jump (iris_1825i_30) {
 	}
 
 make_loops() {
-		const iris_1825i_266 = new Set()
-      for (let iris_1825i_5 = 0; iris_1825i_5 < this.n; iris_1825i_5++) {
-      const iris_1825i_30 = i_op(this.proto.code[iris_1825i_5])
-      if (op_length(iris_1825i_30) === 2 || iris_1825i_30 === iris_1825i_13.JUMP || iris_1825i_30 === iris_1825i_13.JUMPBACK || iris_1825i_30 === iris_1825i_13.JUMPX) {
-        const iris_1825i_163 = jump_target(this.proto.code, iris_1825i_5)
-                if (iris_1825i_163 >= 0 && iris_1825i_163 < this.n && iris_1825i_163 < iris_1825i_5) {
-					if (iris_1825i_163 > 0) {
-						const iris_1825i_267 = i_op(this.proto.code[iris_1825i_163 - 1]);
-                  if (iris_1825i_267 === iris_1825i_13.FORGPREP || iris_1825i_267 === iris_1825i_13.FORGPREP_INEXT || iris_1825i_267 === iris_1825i_13.FORGPREP_NEXT ||
-							iris_1825i_267 === iris_1825i_13.FORNPREP) iris_1825i_266.add(iris_1825i_163 - 1);
-            else iris_1825i_266.add(iris_1825i_163);
+		const headers = new Set()
+      for (let i = 0; i < this.n; i++) {
+      const op = i_op(this.proto.code[i])
+      if (op_length(op) === 2 || op === Op.JUMP || op === Op.JUMPBACK || op === Op.JUMPX) {
+        const t = jump_target(this.proto.code, i)
+                if (t >= 0 && t < this.n && t < i) {
+					if (t > 0) {
+						const po = i_op(this.proto.code[t - 1]);
+                  if (po === Op.FORGPREP || po === Op.FORGPREP_INEXT || po === Op.FORGPREP_NEXT ||
+							po === Op.FORNPREP) headers.add(t - 1);
+            else headers.add(t);
                     } else {
-            iris_1825i_266.add(iris_1825i_163)
+            headers.add(t)
           }
         }
       }
     }
 
-      for (const iris_1825i_268 of iris_1825i_266) {
-      if (this.loops.has(iris_1825i_268)) continue
-			const iris_1825i_173 = { type: 0, header: iris_1825i_268, exit: 0, bodyStart: 0, backedge: -1, forA: 0, varCount: 0, condJump: -1, isIpairs: false }
-			const iris_1825i_269 = i_op(this.proto.code[iris_1825i_268])
+      for (const h of headers) {
+      if (this.loops.has(h)) continue
+			const l = { type: 0, header: h, exit: 0, bodyStart: 0, backedge: -1, forA: 0, varCount: 0, condJump: -1, isIpairs: false }
+			const hop = i_op(this.proto.code[h])
 
-      if (iris_1825i_269 === iris_1825i_13.FORNPREP) {
-				iris_1825i_173.type = iris_1825i_234;
-				iris_1825i_173.forA = i_a(this.proto.code[iris_1825i_268]);
-        iris_1825i_173.exit = iris_1825i_268 + 1 + i_d(this.proto.code[iris_1825i_268])
-            iris_1825i_173.bodyStart = iris_1825i_268 + 1
-        for (let iris_1825i_5 = iris_1825i_268 + 1; iris_1825i_5 < iris_1825i_173.exit && iris_1825i_5 < this.n; iris_1825i_5++) {
-          if (i_op(this.proto.code[iris_1825i_5]) === iris_1825i_13.FORNLOOP &&
-						(jump_target(this.proto.code, iris_1825i_5) === iris_1825i_268 || jump_target(this.proto.code, iris_1825i_5) === iris_1825i_268 + 1)) {
-						iris_1825i_173.backedge = iris_1825i_5;
+      if (hop === Op.FORNPREP) {
+				l.type = LOOP_FORNUM;
+				l.forA = i_a(this.proto.code[h]);
+        l.exit = h + 1 + i_d(this.proto.code[h])
+            l.bodyStart = h + 1
+        for (let i = h + 1; i < l.exit && i < this.n; i++) {
+          if (i_op(this.proto.code[i]) === Op.FORNLOOP &&
+						(jump_target(this.proto.code, i) === h || jump_target(this.proto.code, i) === h + 1)) {
+						l.backedge = i;
             break
           }
 				}
-                if (iris_1825i_173.backedge < 0) continue
-            } else if (iris_1825i_269 === iris_1825i_13.FORGPREP || iris_1825i_269 === iris_1825i_13.FORGPREP_INEXT || iris_1825i_269 === iris_1825i_13.FORGPREP_NEXT) {
-        iris_1825i_173.type = iris_1825i_235;
-        iris_1825i_173.forA = i_a(this.proto.code[iris_1825i_268])
-				iris_1825i_173.isIpairs = (iris_1825i_269 === iris_1825i_13.FORGPREP_INEXT);
-				const iris_1825i_270 = jump_target(this.proto.code, iris_1825i_268)
-            if (iris_1825i_270 < 0 || iris_1825i_270 >= this.n || iris_1825i_270 <= iris_1825i_268) continue;
-        iris_1825i_173.backedge = iris_1825i_270;
-            iris_1825i_173.bodyStart = iris_1825i_268 + 1
-        iris_1825i_173.exit = iris_1825i_270 + 2
-                if (iris_1825i_173.backedge + 1 < this.n) iris_1825i_173.varCount = this.proto.code[iris_1825i_173.backedge + 1] & 0xff
+                if (l.backedge < 0) continue
+            } else if (hop === Op.FORGPREP || hop === Op.FORGPREP_INEXT || hop === Op.FORGPREP_NEXT) {
+        l.type = LOOP_FORGENERIC;
+        l.forA = i_a(this.proto.code[h])
+				l.isIpairs = (hop === Op.FORGPREP_INEXT);
+				const forgloop = jump_target(this.proto.code, h)
+            if (forgloop < 0 || forgloop >= this.n || forgloop <= h) continue;
+        l.backedge = forgloop;
+            l.bodyStart = h + 1
+        l.exit = forgloop + 2
+                if (l.backedge + 1 < this.n) l.varCount = this.proto.code[l.backedge + 1] & 0xff
       } else {
-				let iris_1825i_271 = -1;
-            for (let iris_1825i_5 = iris_1825i_268 + 1; iris_1825i_5 < this.n; iris_1825i_5++) {
-					const iris_1825i_272 = i_op(this.proto.code[iris_1825i_5])
-          if (op_length(iris_1825i_272) === 2 || iris_1825i_272 === iris_1825i_13.JUMP || iris_1825i_272 === iris_1825i_13.JUMPBACK || iris_1825i_272 === iris_1825i_13.JUMPX) {
-						const iris_1825i_163 = jump_target(this.proto.code, iris_1825i_5)
-						if (iris_1825i_163 === iris_1825i_268) { iris_1825i_271 = iris_1825i_5; break }
+				let be = -1;
+            for (let i = h + 1; i < this.n; i++) {
+					const o = i_op(this.proto.code[i])
+          if (op_length(o) === 2 || o === Op.JUMP || o === Op.JUMPBACK || o === Op.JUMPX) {
+						const t = jump_target(this.proto.code, i)
+						if (t === h) { be = i; break }
                     }
         }
-        if (iris_1825i_271 < 0) continue
-        const iris_1825i_273 = i_op(this.proto.code[iris_1825i_271]);
+        if (be < 0) continue
+        const beOp = i_op(this.proto.code[be]);
 
 
-        let iris_1825i_274 = -1
-        for (let iris_1825i_5 = iris_1825i_268; iris_1825i_5 < iris_1825i_271 && iris_1825i_5 < this.n;) {
-          const iris_1825i_272 = i_op(this.proto.code[iris_1825i_5]);
-          if (this.is_cond_jump(iris_1825i_272)) {
-						const iris_1825i_133 = jump_target(this.proto.code, iris_1825i_5);
-            if (iris_1825i_133 > iris_1825i_271) { iris_1825i_274 = iris_1825i_5; break }
+        let cj = -1
+        for (let i = h; i < be && i < this.n;) {
+          const o = i_op(this.proto.code[i]);
+          if (this.is_cond_jump(o)) {
+						const tgt = jump_target(this.proto.code, i);
+            if (tgt > be) { cj = i; break }
                }
-          iris_1825i_5 += op_length(iris_1825i_272);
+          i += op_length(o);
         }
 
-        if (iris_1825i_274 >= 0) {
-               iris_1825i_173.type = iris_1825i_231
-					iris_1825i_173.condJump = iris_1825i_274;
-          iris_1825i_173.exit = jump_target(this.proto.code, iris_1825i_274);
-               iris_1825i_173.bodyStart = iris_1825i_274 + op_length(i_op(this.proto.code[iris_1825i_274]))
-					iris_1825i_173.backedge = iris_1825i_271
-        } else if (iris_1825i_273 === iris_1825i_13.JUMPBACK || iris_1825i_273 === iris_1825i_13.JUMP) {
-          iris_1825i_173.type = iris_1825i_232
-          iris_1825i_173.exit = iris_1825i_271 + 1
-					iris_1825i_173.bodyStart = iris_1825i_268;
-          iris_1825i_173.backedge = iris_1825i_271;
+        if (cj >= 0) {
+               l.type = LOOP_WHILE
+					l.condJump = cj;
+          l.exit = jump_target(this.proto.code, cj);
+               l.bodyStart = cj + op_length(i_op(this.proto.code[cj]))
+					l.backedge = be
+        } else if (beOp === Op.JUMPBACK || beOp === Op.JUMP) {
+          l.type = LOOP_BREAKALWAYS
+          l.exit = be + 1
+					l.bodyStart = h;
+          l.backedge = be;
 				} else {
-					iris_1825i_173.type = iris_1825i_233
-          iris_1825i_173.exit = iris_1825i_271 + op_length(iris_1825i_273);
-               iris_1825i_173.bodyStart = iris_1825i_268
-          iris_1825i_173.backedge = iris_1825i_271
+					l.type = LOOP_REPEAT
+          l.exit = be + op_length(beOp);
+               l.bodyStart = h
+          l.backedge = be
             }
       }
-         this.loops.set(iris_1825i_268, iris_1825i_173)
+         this.loops.set(h, l)
 		}
   }
 
-cond_of (iris_1825i_119, iris_1825i_547) {
-    const iris_1825i_37 = this.proto.code[iris_1825i_119]
-		const iris_1825i_30 = i_op(iris_1825i_37);
-    const iris_1825i_242 = i_a(iris_1825i_37);
-      const iris_1825i_275 = this.read_reg(iris_1825i_242);
-      const iris_1825i_276 = () => {
-      if (iris_1825i_119 + 1 < this.n) return this.read_reg(aux_a(this.proto.code[iris_1825i_119 + 1]))
+cond_of (idx, invert) {
+    const insn = this.proto.code[idx]
+		const op = i_op(insn);
+    const A = i_a(insn);
+      const lhs = this.read_reg(A);
+      const rhs2 = () => {
+      if (idx + 1 < this.n) return this.read_reg(aux_a(this.proto.code[idx + 1]))
       return this.leaf('nil')
     }
-    switch (iris_1825i_30) {
-      case iris_1825i_13.JUMPIF: return iris_1825i_547 ? this.un('not', iris_1825i_275) : iris_1825i_275
-			case iris_1825i_13.JUMPIFNOT: return iris_1825i_547 ? iris_1825i_275 : this.un('not', iris_1825i_275);
-			case iris_1825i_13.JUMPIFEQ: return this.bin(iris_1825i_547 ? "~=" : '==', iris_1825i_275, iris_1825i_276(), 3)
-			case iris_1825i_13.JUMPIFLE: return this.bin(iris_1825i_547 ? ">" : '<=', iris_1825i_275, iris_1825i_276(), 3);
-      case iris_1825i_13.JUMPIFLT: return this.bin(iris_1825i_547 ? '>=' : '<', iris_1825i_275, iris_1825i_276(), 3)
-			case iris_1825i_13.JUMPIFNOTEQ: return this.bin(iris_1825i_547 ? '==' : "~=", iris_1825i_275, iris_1825i_276(), 3);
-            case iris_1825i_13.JUMPIFNOTLE: return this.bin(iris_1825i_547 ? '<=' : '>', iris_1825i_275, iris_1825i_276(), 3);
-         case iris_1825i_13.JUMPIFNOTLT: return this.bin(iris_1825i_547 ? "<" : '>=', iris_1825i_275, iris_1825i_276(), 3);
-            case iris_1825i_13.JUMPXEQKNIL: {
-                const iris_1825i_277 = aux_not(this.proto.code[iris_1825i_119 + 1]);
-            const iris_1825i_278 = iris_1825i_547 ? iris_1825i_277 : !iris_1825i_277
-                return this.bin(iris_1825i_278 ? '==' : '~=', iris_1825i_275, this.leaf('nil'), 3);
+    switch (op) {
+      case Op.JUMPIF: return invert ? this.un('not', lhs) : lhs
+			case Op.JUMPIFNOT: return invert ? lhs : this.un('not', lhs);
+			case Op.JUMPIFEQ: return this.bin(invert ? "~=" : '==', lhs, rhs2(), 3)
+			case Op.JUMPIFLE: return this.bin(invert ? ">" : '<=', lhs, rhs2(), 3);
+      case Op.JUMPIFLT: return this.bin(invert ? '>=' : '<', lhs, rhs2(), 3)
+			case Op.JUMPIFNOTEQ: return this.bin(invert ? '==' : "~=", lhs, rhs2(), 3);
+            case Op.JUMPIFNOTLE: return this.bin(invert ? '<=' : '>', lhs, rhs2(), 3);
+         case Op.JUMPIFNOTLT: return this.bin(invert ? "<" : '>=', lhs, rhs2(), 3);
+            case Op.JUMPXEQKNIL: {
+                const notFlag = aux_not(this.proto.code[idx + 1]);
+            const eq = invert ? notFlag : !notFlag
+                return this.bin(eq ? '==' : '~=', lhs, this.leaf('nil'), 3);
 			}
-            case iris_1825i_13.JUMPXEQKB: {
-				const iris_1825i_193 = aux_kb(this.proto.code[iris_1825i_119 + 1]) !== 0
-				const iris_1825i_277 = aux_not(this.proto.code[iris_1825i_119 + 1])
-				const iris_1825i_278 = iris_1825i_547 ? iris_1825i_277 : !iris_1825i_277
-            return this.bin(iris_1825i_278 ? '==' : '~=', iris_1825i_275, this.leaf(iris_1825i_193 ? "true" : 'false'), 3)
+            case Op.JUMPXEQKB: {
+				const val = aux_kb(this.proto.code[idx + 1]) !== 0
+				const notFlag = aux_not(this.proto.code[idx + 1])
+				const eq = invert ? notFlag : !notFlag
+            return this.bin(eq ? '==' : '~=', lhs, this.leaf(val ? "true" : 'false'), 3)
 			}
-			case iris_1825i_13.JUMPXEQKN: case iris_1825i_13.JUMPXEQKS: {
-        const iris_1825i_277 = aux_not(this.proto.code[iris_1825i_119 + 1]);
-        const iris_1825i_278 = iris_1825i_547 ? iris_1825i_277 : !iris_1825i_277
-                return this.bin(iris_1825i_278 ? "==" : '~=', iris_1825i_275, this.leaf(this.const_from(aux_kv(this.proto.code[iris_1825i_119 + 1]))), 3);
+			case Op.JUMPXEQKN: case Op.JUMPXEQKS: {
+        const notFlag = aux_not(this.proto.code[idx + 1]);
+        const eq = invert ? notFlag : !notFlag
+                return this.bin(eq ? "==" : '~=', lhs, this.leaf(this.const_from(aux_kv(this.proto.code[idx + 1]))), 3);
             }
       default:
-                return iris_1825i_275
+                return lhs
         }
    }
 
-  say(iris_1825i_4, iris_1825i_363) { iris_1825i_4.emit(iris_1825i_363) }
-say_expr(iris_1825i_4, iris_1825i_79) {
-    const iris_1825i_177 = render_expr(iris_1825i_79);
-    if (iris_1825i_177.length === 0) return;
-    iris_1825i_4.emit(iris_1825i_177[0][1])
-    for (let iris_1825i_5 = 1; iris_1825i_5 < iris_1825i_177.length; iris_1825i_5++) iris_1825i_4.push(iris_1825i_4.indent + iris_1825i_177[iris_1825i_5][0], iris_1825i_177[iris_1825i_5][1])
+  say(out, text) { out.emit(text) }
+say_expr(out, value) {
+    const rl = render_expr(value);
+    if (rl.length === 0) return;
+    out.emit(rl[0][1])
+    for (let i = 1; i < rl.length; i++) out.push(out.indent + rl[i][0], rl[i][1])
 	}
-assign(iris_1825i_4, iris_1825i_275, iris_1825i_383) {
-		const iris_1825i_177 = render_expr(iris_1825i_383)
-    if (iris_1825i_177.length === 0) return
-    const iris_1825i_279 = iris_1825i_275 + " = " + iris_1825i_177[0][1]
-    iris_1825i_4.emit(iris_1825i_279)
-    for (let iris_1825i_5 = 1; iris_1825i_5 < iris_1825i_177.length; iris_1825i_5++) iris_1825i_4.push(iris_1825i_4.indent + iris_1825i_177[iris_1825i_5][0], iris_1825i_177[iris_1825i_5][1]);
+assign(out, lhs, rhs) {
+		const rl = render_expr(rhs)
+    if (rl.length === 0) return
+    const first = lhs + " = " + rl[0][1]
+    out.emit(first)
+    for (let i = 1; i < rl.length; i++) out.push(out.indent + rl[i][0], rl[i][1]);
 	}
-force_local(iris_1825i_4, iris_1825i_54) {
-    if (this.regDeclared[iris_1825i_54]) return;
-    let iris_1825i_118 = this.regName[iris_1825i_54]
-    if (iris_1825i_118.length === 0) {
-			const iris_1825i_280 = this.locv_name(iris_1825i_54, this.currentPc)
-      iris_1825i_118 = iris_1825i_280.length > 0 ? iris_1825i_280 : this.fresh_name("v", this.regTy[iris_1825i_54] && this.regTy[iris_1825i_54].name);
+force_local(out, r) {
+    if (this.regDeclared[r]) return;
+    let name = this.regName[r]
+    if (name.length === 0) {
+			const loc = this.locv_name(r, this.currentPc)
+      name = loc.length > 0 ? loc : this.fresh_name("v", this.regTy[r] && this.regTy[r].name);
       }
-        this.regName[iris_1825i_54] = iris_1825i_118
-        this.regDeclared[iris_1825i_54] = true
-		const iris_1825i_193 = this.reg[iris_1825i_54] ? this.reg[iris_1825i_54] : this.leaf("nil");
-		this.assign(iris_1825i_4, "local " + iris_1825i_118, iris_1825i_193)
-    this.reg[iris_1825i_54] = this.leaf(iris_1825i_118)
-      this.maxLocals = Math.max(this.maxLocals, iris_1825i_54 + 1);
+        this.regName[r] = name
+        this.regDeclared[r] = true
+		const val = this.reg[r] ? this.reg[r] : this.leaf("nil");
+		this.assign(out, "local " + name, val)
+    this.reg[r] = this.leaf(name)
+      this.maxLocals = Math.max(this.maxLocals, r + 1);
     }
 
-store_reg(iris_1825i_4, iris_1825i_54, iris_1825i_477, iris_1825i_79, iris_1825i_548) {
-    if (iris_1825i_54 >= this.R) return
-    const iris_1825i_281 = this.locv_name(iris_1825i_54, iris_1825i_477);
-    const iris_1825i_282 = !this.opt.foldSingleUseTemps &&
-			(iris_1825i_79.kind === iris_1825i_158.Call || iris_1825i_79.kind === iris_1825i_158.MethodCall);
-    if ((iris_1825i_281.length > 0 || iris_1825i_548 || iris_1825i_282) && !this.regDeclared[iris_1825i_54]) {
-         const iris_1825i_118 = iris_1825i_281.length > 0 ? iris_1825i_281
-        : (this.regName[iris_1825i_54].length === 0 ? this.fresh_name('v', iris_1825i_79.ty ? iris_1825i_79.ty.name : null) : this.regName[iris_1825i_54])
-      this.regName[iris_1825i_54] = iris_1825i_118
-            this.regDeclared[iris_1825i_54] = true;
-      this.reg[iris_1825i_54] = this.leaf(iris_1825i_118);
-			this.regOrigin[iris_1825i_54] = iris_1825i_79
-      if (iris_1825i_79.ty) this.regTy[iris_1825i_54] = iris_1825i_79.ty
-			this.assign(iris_1825i_4, typed_local(iris_1825i_118, iris_1825i_79.ty), iris_1825i_79);
-         this.maxLocals = Math.max(this.maxLocals, iris_1825i_54 + 1)
+store_reg(out, r, at, value, force_local) {
+    if (r >= this.R) return
+    const locName = this.locv_name(r, at);
+    const noFold = !this.opt.foldSingleUseTemps &&
+			(value.kind === ExprK.Call || value.kind === ExprK.MethodCall);
+    if ((locName.length > 0 || force_local || noFold) && !this.regDeclared[r]) {
+         const name = locName.length > 0 ? locName
+        : (this.regName[r].length === 0 ? this.fresh_name('v', value.ty ? value.ty.name : null) : this.regName[r])
+      this.regName[r] = name
+            this.regDeclared[r] = true;
+      this.reg[r] = this.leaf(name);
+			this.regOrigin[r] = value
+      if (value.ty) this.regTy[r] = value.ty
+			this.assign(out, typed_local(name, value.ty), value);
+         this.maxLocals = Math.max(this.maxLocals, r + 1)
             return;
 		}
-		if (this.regDeclared[iris_1825i_54]) {
-			this.assign(iris_1825i_4, this.regName[iris_1825i_54], iris_1825i_79);
-            this.reg[iris_1825i_54] = this.leaf(this.regName[iris_1825i_54]);
-      this.regOrigin[iris_1825i_54] = iris_1825i_79
-      if (iris_1825i_79.ty) this.regTy[iris_1825i_54] = iris_1825i_79.ty
+		if (this.regDeclared[r]) {
+			this.assign(out, this.regName[r], value);
+            this.reg[r] = this.leaf(this.regName[r]);
+      this.regOrigin[r] = value
+      if (value.ty) this.regTy[r] = value.ty
       return;
 		}
-    this.reg[iris_1825i_54] = iris_1825i_79;
-        this.regOrigin[iris_1825i_54] = iris_1825i_79
-      if (iris_1825i_79.ty) this.regTy[iris_1825i_54] = iris_1825i_79.ty
+    this.reg[r] = value;
+        this.regOrigin[r] = value
+      if (value.ty) this.regTy[r] = value.ty
   }
 
-maybe_if_expr(iris_1825i_4, iris_1825i_36) {
+maybe_if_expr(out, pc) {
 		if (!this.opt.ifExpressions) return -1;
-        if (iris_1825i_36 + 2 >= this.n) return -1;
-        const iris_1825i_30 = i_op(this.proto.code[iris_1825i_36])
-        if (!this.is_cond_jump(iris_1825i_30)) return -1;
-		const iris_1825i_283 = jump_target(this.proto.code, iris_1825i_36);
-    if (iris_1825i_283 <= iris_1825i_36 || iris_1825i_283 >= this.n) return -1;
-    const iris_1825i_284 = this.proto.code[iris_1825i_36 + 1]
-      // LOADB-true / LOADB-false pair means the compiler had an if-expression
-      if (i_op(iris_1825i_284) === iris_1825i_13.LOADB && i_c(iris_1825i_284) === 1 && iris_1825i_283 === iris_1825i_36 + 3) {
-         const iris_1825i_285 = i_a(iris_1825i_284);
-      const iris_1825i_286 = this.proto.code[iris_1825i_283]
-         if (i_op(iris_1825i_286) === iris_1825i_13.LOADB && i_a(iris_1825i_286) === iris_1825i_285) {
-                const iris_1825i_287 = this.cond_of(iris_1825i_36, true)
-        const iris_1825i_193 = i_b(iris_1825i_284) ? iris_1825i_287 : this.un("not", iris_1825i_287)
-        this.store_reg(iris_1825i_4, iris_1825i_285, iris_1825i_36, iris_1825i_193, false)
-                return iris_1825i_283 + 1;
+        if (pc + 2 >= this.n) return -1;
+        const op = i_op(this.proto.code[pc])
+        if (!this.is_cond_jump(op)) return -1;
+		const target = jump_target(this.proto.code, pc);
+    if (target <= pc || target >= this.n) return -1;
+    const nextInsn = this.proto.code[pc + 1]
+      
+      if (i_op(nextInsn) === Op.LOADB && i_c(nextInsn) === 1 && target === pc + 3) {
+         const destR = i_a(nextInsn);
+      const elseInsn = this.proto.code[target]
+         if (i_op(elseInsn) === Op.LOADB && i_a(elseInsn) === destR) {
+                const cond = this.cond_of(pc, true)
+        const val = i_b(nextInsn) ? cond : this.un("not", cond)
+        this.store_reg(out, destR, pc, val, false)
+                return target + 1;
       }
     }
-    const iris_1825i_288 = iris_1825i_36 + op_length(iris_1825i_30)
-    const iris_1825i_289 = iris_1825i_283
-        if (iris_1825i_289 <= iris_1825i_288 || iris_1825i_289 >= this.n) return -1
-      const iris_1825i_290 = iris_1825i_289 - 1;
-      if (iris_1825i_290 < iris_1825i_288 || i_op(this.proto.code[iris_1825i_290]) !== iris_1825i_13.JUMP) return -1;
-        const iris_1825i_291 = jump_target(this.proto.code, iris_1825i_290)
-      if (iris_1825i_291 <= iris_1825i_289 || iris_1825i_291 > this.n) return -1
-      const iris_1825i_292 = iris_1825i_290 - iris_1825i_288;
-    const iris_1825i_293 = iris_1825i_291 - iris_1825i_289;
-    if (iris_1825i_292 > 4 || iris_1825i_293 > 4) return -1
-    const iris_1825i_294 = this.proto.code[iris_1825i_289]
-      const iris_1825i_287 = this.cond_of(iris_1825i_36, true)
-    const iris_1825i_295 = this.clone()
-        const iris_1825i_296 = new iris_1825i_236()
-    iris_1825i_295.walk(iris_1825i_296, iris_1825i_288, iris_1825i_290, -1, false)
-    if (i_op(iris_1825i_294) === iris_1825i_13.LOADNIL && iris_1825i_293 === 1) {
-         const iris_1825i_285 = i_a(iris_1825i_294)
-      const iris_1825i_297 = this.leaf('nil')
-         const iris_1825i_298 = iris_1825i_295.read_reg(iris_1825i_285);
-			if (iris_1825i_298 && iris_1825i_298.kind !== iris_1825i_158.Leaf) {
-                const iris_1825i_299 = this.if_else(iris_1825i_287, iris_1825i_298, iris_1825i_297);
-        this.store_reg(iris_1825i_4, iris_1825i_285, iris_1825i_36, iris_1825i_299, true);
-        return iris_1825i_291;
+    const thenStart = pc + op_length(op)
+    const elseStart = target
+        if (elseStart <= thenStart || elseStart >= this.n) return -1
+      const thenJumpPc = elseStart - 1;
+      if (thenJumpPc < thenStart || i_op(this.proto.code[thenJumpPc]) !== Op.JUMP) return -1;
+        const endTarget = jump_target(this.proto.code, thenJumpPc)
+      if (endTarget <= elseStart || endTarget > this.n) return -1
+      const thenLen = thenJumpPc - thenStart;
+    const elseLen = endTarget - elseStart;
+    if (thenLen > 4 || elseLen > 4) return -1
+    const elseFirst = this.proto.code[elseStart]
+      const cond = this.cond_of(pc, true)
+    const tempState = this.clone()
+        const tempSink = new Sink()
+    tempState.walk(tempSink, thenStart, thenJumpPc, -1, false)
+    if (i_op(elseFirst) === Op.LOADNIL && elseLen === 1) {
+         const destR = i_a(elseFirst)
+      const elseVal = this.leaf('nil')
+         const thenVal = tempState.read_reg(destR);
+			if (thenVal && thenVal.kind !== ExprK.Leaf) {
+                const ife = this.if_else(cond, thenVal, elseVal);
+        this.store_reg(out, destR, pc, ife, true);
+        return endTarget;
       }
-    } else if (i_op(iris_1825i_294) === iris_1825i_13.LOADK && iris_1825i_293 === 1) {
-            const iris_1825i_285 = i_a(iris_1825i_294);
-			const iris_1825i_297 = this.leaf(this.const_from(i_d(iris_1825i_294)))
-      const iris_1825i_298 = iris_1825i_295.read_reg(iris_1825i_285)
-            if (iris_1825i_298) {
-        const iris_1825i_299 = this.if_else(iris_1825i_287, iris_1825i_298, iris_1825i_297);
-                this.store_reg(iris_1825i_4, iris_1825i_285, iris_1825i_36, iris_1825i_299, true);
-        return iris_1825i_291
+    } else if (i_op(elseFirst) === Op.LOADK && elseLen === 1) {
+            const destR = i_a(elseFirst);
+			const elseVal = this.leaf(this.const_from(i_d(elseFirst)))
+      const thenVal = tempState.read_reg(destR)
+            if (thenVal) {
+        const ife = this.if_else(cond, thenVal, elseVal);
+                this.store_reg(out, destR, pc, ife, true);
+        return endTarget
 			}
 		}
 		return -1
   }
-skip_fast_call(iris_1825i_4, iris_1825i_119) {
-        const iris_1825i_37 = this.proto.code[iris_1825i_119]
-		const iris_1825i_300 = i_op(iris_1825i_37)
-        return iris_1825i_119 + op_length(iris_1825i_300);
+skip_fast_call(out, idx) {
+        const insn = this.proto.code[idx]
+		const fop = i_op(insn)
+        return idx + op_length(fop);
   }
-comment_for (iris_1825i_135, iris_1825i_302, iris_1825i_118) {
-		let iris_1825i_67 = "--[[ "
-		if (iris_1825i_118.length > 0 && iris_1825i_118[0] !== '(') iris_1825i_67 += iris_1825i_118 + ' | '
-		iris_1825i_67 += 'Line: ' + iris_1825i_135.linedefined;
-        if (iris_1825i_302.length > 0) {
-			iris_1825i_67 += " | Upvalues: "
-            for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_302.length; iris_1825i_5++) {
-				if (iris_1825i_5) iris_1825i_67 += ', '
-        iris_1825i_67 += iris_1825i_302[iris_1825i_5].name + (iris_1825i_302[iris_1825i_5].byRef ? ' (ref)' : ' (copy)');
+comment_for (child, binds, name) {
+		let c = "--[[ "
+		if (name.length > 0 && name[0] !== '(') c += name + ' | '
+		c += 'Line: ' + child.linedefined;
+        if (binds.length > 0) {
+			c += " | Upvalues: "
+            for (let i = 0; i < binds.length; i++) {
+				if (i) c += ', '
+        c += binds[i].name + (binds[i].byRef ? ' (ref)' : ' (copy)');
       }
       }
-        iris_1825i_67 += ' ]]';
-    return iris_1825i_67;
+        c += ' ]]';
+    return c;
 	}
 
-new_closure (iris_1825i_4, iris_1825i_119) {
-      const iris_1825i_37 = this.proto.code[iris_1825i_119]
-    const iris_1825i_242 = i_a(iris_1825i_37);
-    const iris_1825i_301 = i_d(iris_1825i_37)
-    if (iris_1825i_301 < 0 || iris_1825i_301 >= this.proto.children.length) {
-			this.store_reg(iris_1825i_4, iris_1825i_242, iris_1825i_119, this.leaf("?"), false)
-      return iris_1825i_119 + 1;
+new_closure (out, idx) {
+      const insn = this.proto.code[idx]
+    const A = i_a(insn);
+    const childIdx = i_d(insn)
+    if (childIdx < 0 || childIdx >= this.proto.children.length) {
+			this.store_reg(out, A, idx, this.leaf("?"), false)
+      return idx + 1;
       }
-    const iris_1825i_67 = this.program.protos[this.proto.children[iris_1825i_301]]
-    const iris_1825i_62 = iris_1825i_67.nups;
-    const iris_1825i_302 = []
-    for (let iris_1825i_129 = 0; iris_1825i_129 < iris_1825i_62 && iris_1825i_119 + 1 + iris_1825i_129 < this.n; iris_1825i_129++) {
-			const iris_1825i_136 = this.proto.code[iris_1825i_119 + 1 + iris_1825i_129]
-         const iris_1825i_47 = { name: '', byRef: false, isParentUpvalue: false }
-			const iris_1825i_137 = i_a(iris_1825i_136)
-      const iris_1825i_239 = i_b(iris_1825i_136);
-      if (iris_1825i_137 === 2) {
-        iris_1825i_47.isParentUpvalue = true
-				iris_1825i_47.name = this.up_name(iris_1825i_239)
-            if (iris_1825i_239 < this.upvals.length) iris_1825i_47.byRef = this.upvals[iris_1825i_239].byRef
+    const c = this.program.protos[this.proto.children[childIdx]]
+    const nups = c.nups;
+    const binds = []
+    for (let u = 0; u < nups && idx + 1 + u < this.n; u++) {
+			const cap = this.proto.code[idx + 1 + u]
+         const b = { name: '', byRef: false, isParentUpvalue: false }
+			const kind = i_a(cap)
+      const src = i_b(cap);
+      if (kind === 2) {
+        b.isParentUpvalue = true
+				b.name = this.up_name(src)
+            if (src < this.upvals.length) b.byRef = this.upvals[src].byRef
             } else {
-				iris_1825i_47.byRef = (iris_1825i_137 === 1);
-            iris_1825i_47.name = this.cap_name(iris_1825i_4, iris_1825i_119, iris_1825i_239)
+				b.byRef = (kind === 1);
+            b.name = this.cap_name(out, idx, src)
          }
-			iris_1825i_302.push(iris_1825i_47)
+			binds.push(b)
       }
-    const iris_1825i_303 = build_body(this.program, iris_1825i_67, iris_1825i_302, false)
-		let iris_1825i_304 = iris_1825i_67.debugname;
-		if (iris_1825i_304.length > 0 && iris_1825i_304[0] === '(') iris_1825i_304 = ""
-		iris_1825i_303.comment = this.comment_for(iris_1825i_67, iris_1825i_302, iris_1825i_304)
-        const iris_1825i_305 = make_expr(iris_1825i_158.Lambda)
-    iris_1825i_305.hdr = iris_1825i_303.header;
-    iris_1825i_305.about = iris_1825i_303.comment
-		iris_1825i_305.srcLine = iris_1825i_67.linedefined
-		iris_1825i_305.bodyLines = iris_1825i_303.body.lines.map(iris_1825i_173 => [iris_1825i_173.level, iris_1825i_173.text]);
-      iris_1825i_305.ty = ty(1, "function");
-        const iris_1825i_306 = iris_1825i_119 + 1 + iris_1825i_62
-    if (iris_1825i_306 < this.n && i_op(this.proto.code[iris_1825i_306]) === iris_1825i_13.SETGLOBAL &&
-         i_a(this.proto.code[iris_1825i_306]) === iris_1825i_242 && iris_1825i_306 + 1 < this.n) {
-			const iris_1825i_307 = this.const_at(this.proto.code[iris_1825i_306 + 1])
-      if (iris_1825i_307 && iris_1825i_307.kind === iris_1825i_14.String && is_identifier(iris_1825i_307.str)) {
-            const iris_1825i_308 = iris_1825i_307.str
-        const iris_1825i_309 = iris_1825i_303.header.indexOf('(')
-            const iris_1825i_310 = (iris_1825i_309 !== -1) ? iris_1825i_303.header.slice(iris_1825i_309) : "()";
-                iris_1825i_305.hdr = "function " + iris_1825i_308 + iris_1825i_310;
-				iris_1825i_305.about = this.comment_for(iris_1825i_67, iris_1825i_302, iris_1825i_308)
-                this.say_expr(iris_1825i_4, iris_1825i_305)
-        this.nuke_reg(iris_1825i_242);
-				return iris_1825i_306 + 2
+    const cr = build_body(this.program, c, binds, false)
+		let debugName = c.debugname;
+		if (debugName.length > 0 && debugName[0] === '(') debugName = ""
+		cr.comment = this.comment_for(c, binds, debugName)
+        const fe = make_expr(ExprK.Lambda)
+    fe.hdr = cr.header;
+    fe.about = cr.comment
+		fe.srcLine = c.linedefined
+		fe.bodyLines = cr.body.lines.map(l => [l.level, l.text]);
+      fe.ty = ty(1, "function");
+        const afterCaptures = idx + 1 + nups
+    if (afterCaptures < this.n && i_op(this.proto.code[afterCaptures]) === Op.SETGLOBAL &&
+         i_a(this.proto.code[afterCaptures]) === A && afterCaptures + 1 < this.n) {
+			const gc = this.const_at(this.proto.code[afterCaptures + 1])
+      if (gc && gc.kind === ConstK.String && is_identifier(gc.str)) {
+            const gname = gc.str
+        const lp = cr.header.indexOf('(')
+            const params = (lp !== -1) ? cr.header.slice(lp) : "()";
+                fe.hdr = "function " + gname + params;
+				fe.about = this.comment_for(c, binds, gname)
+                this.say_expr(out, fe)
+        this.nuke_reg(A);
+				return afterCaptures + 2
       }
     }
-		if (iris_1825i_304.length > 0 && is_identifier(iris_1825i_304)) {
-			const iris_1825i_309 = iris_1825i_303.header.indexOf('(')
-            const iris_1825i_310 = (iris_1825i_309 !== -1) ? iris_1825i_303.header.slice(iris_1825i_309) : '()';
-      iris_1825i_305.hdr = "local function " + iris_1825i_304 + iris_1825i_310;
-			iris_1825i_305.about = this.comment_for(iris_1825i_67, iris_1825i_302, iris_1825i_304);
-            this.say_expr(iris_1825i_4, iris_1825i_305);
-			this.usedNames.add(iris_1825i_304)
-      this.name_reg(iris_1825i_242, iris_1825i_304)
-      this.regDeclared[iris_1825i_242] = true
-            return iris_1825i_306;
+		if (debugName.length > 0 && is_identifier(debugName)) {
+			const lp = cr.header.indexOf('(')
+            const params = (lp !== -1) ? cr.header.slice(lp) : '()';
+      fe.hdr = "local function " + debugName + params;
+			fe.about = this.comment_for(c, binds, debugName);
+            this.say_expr(out, fe);
+			this.usedNames.add(debugName)
+      this.name_reg(A, debugName)
+      this.regDeclared[A] = true
+            return afterCaptures;
         }
-		if (iris_1825i_306 < this.n && i_op(this.proto.code[iris_1825i_306]) === iris_1825i_13.SETTABLEKS &&
-			i_a(this.proto.code[iris_1825i_306]) === iris_1825i_242 && iris_1825i_306 + 1 < this.n) {
-      const iris_1825i_311 = i_b(this.proto.code[iris_1825i_306]);
-            const iris_1825i_312 = this.const_at(this.proto.code[iris_1825i_306 + 1]);
-         if (iris_1825i_312 && iris_1825i_312.kind === iris_1825i_14.String && is_identifier(iris_1825i_312.str)) {
-				const iris_1825i_313 = iris_1825i_312.str
-                const iris_1825i_314 = this.read_reg(iris_1825i_311);
-                const iris_1825i_315 = one_line(iris_1825i_314);
-				const iris_1825i_309 = iris_1825i_303.header.indexOf('(');
-				const iris_1825i_310 = (iris_1825i_309 !== -1) ? iris_1825i_303.header.slice(iris_1825i_309) : '()'
-				iris_1825i_305.hdr = 'function' + iris_1825i_310;
-				iris_1825i_305.about = this.comment_for(iris_1825i_67, iris_1825i_302, '');
-        this.assign(iris_1825i_4, iris_1825i_315 + '.' + iris_1825i_313, iris_1825i_305)
-            this.nuke_reg(iris_1825i_242)
-            return iris_1825i_306 + 2
+		if (afterCaptures < this.n && i_op(this.proto.code[afterCaptures]) === Op.SETTABLEKS &&
+			i_a(this.proto.code[afterCaptures]) === A && afterCaptures + 1 < this.n) {
+      const tableR = i_b(this.proto.code[afterCaptures]);
+            const kc = this.const_at(this.proto.code[afterCaptures + 1]);
+         if (kc && kc.kind === ConstK.String && is_identifier(kc.str)) {
+				const prop = kc.str
+                const tableExpr = this.read_reg(tableR);
+                const tableStr = one_line(tableExpr);
+				const lp = cr.header.indexOf('(');
+				const params = (lp !== -1) ? cr.header.slice(lp) : '()'
+				fe.hdr = 'function' + params;
+				fe.about = this.comment_for(c, binds, '');
+        this.assign(out, tableStr + '.' + prop, fe)
+            this.nuke_reg(A)
+            return afterCaptures + 2
 			}
     }
-    this.store_reg(iris_1825i_4, iris_1825i_242, iris_1825i_119, iris_1825i_305, false);
-    return iris_1825i_306
+    this.store_reg(out, A, idx, fe, false);
+    return afterCaptures
     }
-dup_closure (iris_1825i_4, iris_1825i_119) {
-    const iris_1825i_37 = this.proto.code[iris_1825i_119]
-        const iris_1825i_242 = i_a(iris_1825i_37);
-    const iris_1825i_67 = this.const_at(i_d(iris_1825i_37));
-    if (!iris_1825i_67 || iris_1825i_67.kind !== iris_1825i_14.Closure || iris_1825i_67.closureProto < 0 ||
-			iris_1825i_67.closureProto >= this.program.protos.length) {
-			this.store_reg(iris_1825i_4, iris_1825i_242, iris_1825i_119, this.leaf("<closure>"), false)
-      return iris_1825i_119 + 1
+dup_closure (out, idx) {
+    const insn = this.proto.code[idx]
+        const A = i_a(insn);
+    const c = this.const_at(i_d(insn));
+    if (!c || c.kind !== ConstK.Closure || c.closureProto < 0 ||
+			c.closureProto >= this.program.protos.length) {
+			this.store_reg(out, A, idx, this.leaf("<closure>"), false)
+      return idx + 1
     }
-		const iris_1825i_135 = this.program.protos[iris_1825i_67.closureProto]
-		const iris_1825i_62 = iris_1825i_135.nups
-    const iris_1825i_302 = []
-		for (let iris_1825i_129 = 0; iris_1825i_129 < iris_1825i_62 && iris_1825i_119 + 1 + iris_1825i_129 < this.n; iris_1825i_129++) {
-			const iris_1825i_136 = this.proto.code[iris_1825i_119 + 1 + iris_1825i_129]
-			const iris_1825i_47 = { name: '', byRef: false, isParentUpvalue: false }
-      const iris_1825i_137 = i_a(iris_1825i_136);
-         const iris_1825i_239 = i_b(iris_1825i_136)
-			if (iris_1825i_137 === 2) {
-            iris_1825i_47.isParentUpvalue = true
-            iris_1825i_47.name = this.up_name(iris_1825i_239);
-                if (iris_1825i_239 < this.upvals.length) iris_1825i_47.byRef = this.upvals[iris_1825i_239].byRef;
+		const child = this.program.protos[c.closureProto]
+		const nups = child.nups
+    const binds = []
+		for (let u = 0; u < nups && idx + 1 + u < this.n; u++) {
+			const cap = this.proto.code[idx + 1 + u]
+			const b = { name: '', byRef: false, isParentUpvalue: false }
+      const kind = i_a(cap);
+         const src = i_b(cap)
+			if (kind === 2) {
+            b.isParentUpvalue = true
+            b.name = this.up_name(src);
+                if (src < this.upvals.length) b.byRef = this.upvals[src].byRef;
 			} else {
-				iris_1825i_47.byRef = (iris_1825i_137 === 1);
-            iris_1825i_47.name = this.cap_name(iris_1825i_4, iris_1825i_119, iris_1825i_239)
+				b.byRef = (kind === 1);
+            b.name = this.cap_name(out, idx, src)
       }
-      iris_1825i_302.push(iris_1825i_47)
+      binds.push(b)
 		}
-    const iris_1825i_303 = build_body(this.program, iris_1825i_135, iris_1825i_302, false);
-		let iris_1825i_304 = iris_1825i_135.debugname
-    if (iris_1825i_304.length > 0 && iris_1825i_304[0] === '(') iris_1825i_304 = '';
-    iris_1825i_303.comment = this.comment_for(iris_1825i_135, iris_1825i_302, iris_1825i_304);
-        const iris_1825i_305 = make_expr(iris_1825i_158.Lambda);
-      iris_1825i_305.hdr = iris_1825i_303.header
-    iris_1825i_305.about = iris_1825i_303.comment;
-		iris_1825i_305.srcLine = iris_1825i_135.linedefined;
-        iris_1825i_305.bodyLines = iris_1825i_303.body.lines.map(iris_1825i_173 => [iris_1825i_173.level, iris_1825i_173.text]);
-    iris_1825i_305.ty = ty(1, "function");
-      const iris_1825i_306 = iris_1825i_119 + 1 + iris_1825i_62;
-		if (iris_1825i_306 < this.n && i_op(this.proto.code[iris_1825i_306]) === iris_1825i_13.SETGLOBAL &&
-      i_a(this.proto.code[iris_1825i_306]) === iris_1825i_242 && iris_1825i_306 + 1 < this.n) {
-         const iris_1825i_307 = this.const_at(this.proto.code[iris_1825i_306 + 1])
-			if (iris_1825i_307 && iris_1825i_307.kind === iris_1825i_14.String && is_identifier(iris_1825i_307.str)) {
-        const iris_1825i_308 = iris_1825i_307.str
-                const iris_1825i_309 = iris_1825i_303.header.indexOf('(');
-				const iris_1825i_310 = (iris_1825i_309 !== -1) ? iris_1825i_303.header.slice(iris_1825i_309) : '()';
-				iris_1825i_305.hdr = 'function ' + iris_1825i_308 + iris_1825i_310
-				iris_1825i_305.about = this.comment_for(iris_1825i_135, iris_1825i_302, iris_1825i_308);
-        this.say_expr(iris_1825i_4, iris_1825i_305);
-				this.nuke_reg(iris_1825i_242);
-        return iris_1825i_306 + 2;
+    const cr = build_body(this.program, child, binds, false);
+		let debugName = child.debugname
+    if (debugName.length > 0 && debugName[0] === '(') debugName = '';
+    cr.comment = this.comment_for(child, binds, debugName);
+        const fe = make_expr(ExprK.Lambda);
+      fe.hdr = cr.header
+    fe.about = cr.comment;
+		fe.srcLine = child.linedefined;
+        fe.bodyLines = cr.body.lines.map(l => [l.level, l.text]);
+    fe.ty = ty(1, "function");
+      const afterCaptures = idx + 1 + nups;
+		if (afterCaptures < this.n && i_op(this.proto.code[afterCaptures]) === Op.SETGLOBAL &&
+      i_a(this.proto.code[afterCaptures]) === A && afterCaptures + 1 < this.n) {
+         const gc = this.const_at(this.proto.code[afterCaptures + 1])
+			if (gc && gc.kind === ConstK.String && is_identifier(gc.str)) {
+        const gname = gc.str
+                const lp = cr.header.indexOf('(');
+				const params = (lp !== -1) ? cr.header.slice(lp) : '()';
+				fe.hdr = 'function ' + gname + params
+				fe.about = this.comment_for(child, binds, gname);
+        this.say_expr(out, fe);
+				this.nuke_reg(A);
+        return afterCaptures + 2;
          }
 		}
-      if (iris_1825i_304.length > 0 && is_identifier(iris_1825i_304)) {
-			const iris_1825i_309 = iris_1825i_303.header.indexOf('(');
-         const iris_1825i_310 = (iris_1825i_309 !== -1) ? iris_1825i_303.header.slice(iris_1825i_309) : "()"
-			iris_1825i_305.hdr = 'local function ' + iris_1825i_304 + iris_1825i_310;
-            iris_1825i_305.about = this.comment_for(iris_1825i_135, iris_1825i_302, iris_1825i_304)
-         this.say_expr(iris_1825i_4, iris_1825i_305);
-			this.usedNames.add(iris_1825i_304);
-			this.name_reg(iris_1825i_242, iris_1825i_304)
-      this.regDeclared[iris_1825i_242] = true
-            return iris_1825i_306
+      if (debugName.length > 0 && is_identifier(debugName)) {
+			const lp = cr.header.indexOf('(');
+         const params = (lp !== -1) ? cr.header.slice(lp) : "()"
+			fe.hdr = 'local function ' + debugName + params;
+            fe.about = this.comment_for(child, binds, debugName)
+         this.say_expr(out, fe);
+			this.usedNames.add(debugName);
+			this.name_reg(A, debugName)
+      this.regDeclared[A] = true
+            return afterCaptures
     }
-      this.store_reg(iris_1825i_4, iris_1825i_242, iris_1825i_119, iris_1825i_305, false)
-      return iris_1825i_306;
+      this.store_reg(out, A, idx, fe, false)
+      return afterCaptures;
   }
 
-do_call (iris_1825i_4, iris_1825i_119) {
-      const iris_1825i_37 = this.proto.code[iris_1825i_119]
-    const iris_1825i_242 = i_a(iris_1825i_37)
-      const iris_1825i_255 = i_b(iris_1825i_37);
-      const iris_1825i_256 = i_c(iris_1825i_37);
-    const iris_1825i_316 = this.methodInfo[iris_1825i_242]
-      this.methodInfo[iris_1825i_242] = null;
-    const iris_1825i_317 = []
-		let iris_1825i_257 = (iris_1825i_255 === 0) ? -1 : iris_1825i_255 - 1
-      let iris_1825i_318 = iris_1825i_242 + 1;
-      let iris_1825i_319 = iris_1825i_257
-    if (iris_1825i_316) {
-      iris_1825i_318 = iris_1825i_242 + 2
-      iris_1825i_319 = (iris_1825i_257 === -1) ? -1 : iris_1825i_257 - 1
+do_call (out, idx) {
+      const insn = this.proto.code[idx]
+    const A = i_a(insn)
+      const B = i_b(insn);
+      const C = i_c(insn);
+    const mi = this.methodInfo[A]
+      this.methodInfo[A] = null;
+    const args = []
+		let nargs = (B === 0) ? -1 : B - 1
+      let argStart = A + 1;
+      let argCount = nargs
+    if (mi) {
+      argStart = A + 2
+      argCount = (nargs === -1) ? -1 : nargs - 1
       }
-    if (iris_1825i_319 === -1) {
-			for (let iris_1825i_54 = iris_1825i_318; iris_1825i_54 < Math.min(iris_1825i_318 + 4, this.R); iris_1825i_54++) {
-        if (!this.reg[iris_1825i_54]) break;
-        iris_1825i_317.push(this.reg[iris_1825i_54]);
-        if (this.reg[iris_1825i_54].multi) break
+    if (argCount === -1) {
+			for (let r = argStart; r < Math.min(argStart + 4, this.R); r++) {
+        if (!this.reg[r]) break;
+        args.push(this.reg[r]);
+        if (this.reg[r].multi) break
 			}
 		} else {
-      for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_319 && iris_1825i_318 + iris_1825i_5 < this.R; iris_1825i_5++)
-                { const iris_1825i_320 = iris_1825i_318 + iris_1825i_5; const iris_1825i_321 = this.read_reg(iris_1825i_320); if (this.strConstOf.has(iris_1825i_320)) iris_1825i_321._srcStr = this.strConstOf.get(iris_1825i_320); iris_1825i_317.push(iris_1825i_321); }
+      for (let i = 0; i < argCount && argStart + i < this.R; i++)
+                { const r$ = argStart + i; const ar$ = this.read_reg(r$); if (this.strConstOf.has(r$)) ar$._srcStr = this.strConstOf.get(r$); args.push(ar$); }
     }
-      let iris_1825i_168
-		if (iris_1825i_316 && iris_1825i_316.selfReg < this.R) {
-            const iris_1825i_179 = this.read_reg(iris_1825i_316.selfReg)
-            if (is_identifier(iris_1825i_316.name)) iris_1825i_168 = this.method_call(iris_1825i_179, iris_1825i_316.name, iris_1825i_317);
-			else iris_1825i_168 = this.call(this.idx(iris_1825i_179, this.leaf(quote(iris_1825i_316.name))), iris_1825i_317)
+      let expr
+		if (mi && mi.selfReg < this.R) {
+            const base = this.read_reg(mi.selfReg)
+            if (is_identifier(mi.name)) expr = this.method_call(base, mi.name, args);
+			else expr = this.call(this.idx(base, this.leaf(quote(mi.name))), args)
     } else {
-			const iris_1825i_322 = this.read_reg(iris_1825i_242)
-      iris_1825i_168 = this.call(iris_1825i_322, iris_1825i_317);
+			const callee = this.read_reg(A)
+      expr = this.call(callee, args);
 		}
-        if (iris_1825i_119 + 1 < this.n) {
-      const iris_1825i_323 = i_op(this.proto.code[iris_1825i_119 + 1]);
-			if (iris_1825i_323 === iris_1825i_13.FORGPREP || iris_1825i_323 === iris_1825i_13.FORGPREP_INEXT || iris_1825i_323 === iris_1825i_13.FORGPREP_NEXT) {
-				const iris_1825i_324 = iris_1825i_119 + 1;
-        if (this.loops.has(iris_1825i_324)) {
-                    const iris_1825i_325 = this.loops.get(iris_1825i_324);
-               iris_1825i_325.iterExpr = iris_1825i_317.length === 0 ? iris_1825i_168 : iris_1825i_317[0]
-                    if (iris_1825i_325.isIpairs && iris_1825i_325.iterExpr && iris_1825i_325.iterExpr.kind === iris_1825i_158.MethodCall) {
-            iris_1825i_325.iterExpr.parenWrap = true
+        if (idx + 1 < this.n) {
+      const nextOp = i_op(this.proto.code[idx + 1]);
+			if (nextOp === Op.FORGPREP || nextOp === Op.FORGPREP_INEXT || nextOp === Op.FORGPREP_NEXT) {
+				const loopH = idx + 1;
+        if (this.loops.has(loopH)) {
+                    const loop = this.loops.get(loopH);
+               loop.iterExpr = args.length === 0 ? expr : args[0]
+                    if (loop.isIpairs && loop.iterExpr && loop.iterExpr.kind === ExprK.MethodCall) {
+            loop.iterExpr.parenWrap = true
                     }
-               this.nuke_reg(iris_1825i_242)
-          return iris_1825i_119 + 1;
+               this.nuke_reg(A)
+          return idx + 1;
             }
 			}
 		}
-    if (iris_1825i_256 === 1) {
-         this.say_expr(iris_1825i_4, iris_1825i_168);
-      this.nuke_reg(iris_1825i_242)
-			return iris_1825i_119 + 1
+    if (C === 1) {
+         this.say_expr(out, expr);
+      this.nuke_reg(A)
+			return idx + 1
     }
-    if (iris_1825i_256 === 0) {
-      iris_1825i_168.multi = true
-      this.reg[iris_1825i_242] = iris_1825i_168;
-			this.regOrigin[iris_1825i_242] = iris_1825i_168;
-			if (iris_1825i_168.ty) this.regTy[iris_1825i_242] = iris_1825i_168.ty
-			return iris_1825i_119 + 1
+    if (C === 0) {
+      expr.multi = true
+      this.reg[A] = expr;
+			this.regOrigin[A] = expr;
+			if (expr.ty) this.regTy[A] = expr.ty
+			return idx + 1
 		}
-    const iris_1825i_258 = iris_1825i_256 - 1
-		if (iris_1825i_258 === 1) {
+    const nres = C - 1
+		if (nres === 1) {
          if (!this.isMain) {
-                const iris_1825i_281 = this.locv_name(iris_1825i_242, iris_1825i_119)
-				if (iris_1825i_281.length > 0) {
-          this.store_reg(iris_1825i_4, iris_1825i_242, iris_1825i_119, iris_1825i_168, true);
-               return iris_1825i_119 + 1;
+                const locName = this.locv_name(A, idx)
+				if (locName.length > 0) {
+          this.store_reg(out, A, idx, expr, true);
+               return idx + 1;
                 }
-				if (!this.alive(iris_1825i_119, iris_1825i_242) && !this.captured[iris_1825i_242]) {
-                    this.say_expr(iris_1825i_4, iris_1825i_168);
-          this.nuke_reg(iris_1825i_242)
-					return iris_1825i_119 + 1
+				if (!this.alive(idx, A) && !this.captured[A]) {
+                    this.say_expr(out, expr);
+          this.nuke_reg(A)
+					return idx + 1
                 }
-        this.reg[iris_1825i_242] = iris_1825i_168;
-        this.regOrigin[iris_1825i_242] = iris_1825i_168;
-        if (iris_1825i_168.ty) this.regTy[iris_1825i_242] = iris_1825i_168.ty
-        return iris_1825i_119 + 1
+        this.reg[A] = expr;
+        this.regOrigin[A] = expr;
+        if (expr.ty) this.regTy[A] = expr.ty
+        return idx + 1
       }
-			if (!this.alive(iris_1825i_119, iris_1825i_242) && !this.captured[iris_1825i_242] && this.locv_name(iris_1825i_242, iris_1825i_119).length === 0 && iris_1825i_242 >= this.maxLocals) {
+			if (!this.alive(idx, A) && !this.captured[A] && this.locv_name(A, idx).length === 0 && A >= this.maxLocals) {
 
 
-        if (iris_1825i_316 && (iris_1825i_316.name === 'WaitForChild' || iris_1825i_316.name === "FindFirstChild" ||
-                            iris_1825i_316.name === 'WaitForChildOfClass' || iris_1825i_316.name === 'FindFirstChildOfClass' || iris_1825i_316.name === 'GetService') && iris_1825i_317.length > 0) {
-               const iris_1825i_326 = pretty_name(quoted_str(iris_1825i_317[0]));
-					if (iris_1825i_326.length > 1 && is_identifier(iris_1825i_326)) {
-            iris_1825i_118 = "_" + iris_1825i_326;
-                  this.usedNames.add(iris_1825i_118)
-            this.regName[iris_1825i_242] = iris_1825i_118
-                        this.regDeclared[iris_1825i_242] = true
-                        this.reg[iris_1825i_242] = this.leaf(iris_1825i_118);
-                  this.regOrigin[iris_1825i_242] = iris_1825i_168;
-            this.assign(iris_1825i_4, "local " + iris_1825i_118, iris_1825i_168)
-						this.maxLocals = Math.max(this.maxLocals, iris_1825i_242 + 1);
-						return iris_1825i_119 + 1
+        if (mi && (mi.name === 'WaitForChild' || mi.name === "FindFirstChild" ||
+                            mi.name === 'WaitForChildOfClass' || mi.name === 'FindFirstChildOfClass' || mi.name === 'GetService') && args.length > 0) {
+               const wname = pretty_name(quoted_str(args[0]));
+					if (wname.length > 1 && is_identifier(wname)) {
+            name = "_" + wname;
+                  this.usedNames.add(name)
+            this.regName[A] = name
+                        this.regDeclared[A] = true
+                        this.reg[A] = this.leaf(name);
+                  this.regOrigin[A] = expr;
+            this.assign(out, "local " + name, expr)
+						this.maxLocals = Math.max(this.maxLocals, A + 1);
+						return idx + 1
           }
 				}
-        this.say_expr(iris_1825i_4, iris_1825i_168)
-                this.nuke_reg(iris_1825i_242);
-                return iris_1825i_119 + 1
+        this.say_expr(out, expr)
+                this.nuke_reg(A);
+                return idx + 1
       }
-      let iris_1825i_118 = '';
-            const iris_1825i_281 = this.locv_name(iris_1825i_242, iris_1825i_119);
-            if (iris_1825i_281.length > 0) {
-				iris_1825i_118 = iris_1825i_281;
-            } else if (iris_1825i_316 && (iris_1825i_316.name === "WaitForChild" || iris_1825i_316.name === 'FindFirstChild' ||
-                        iris_1825i_316.name === 'WaitForChildOfClass' || iris_1825i_316.name === 'FindFirstChildOfClass' || iris_1825i_316.name === 'GetService') && iris_1825i_317.length > 0) {
-        const iris_1825i_327 = quoted_str(iris_1825i_317[0])
-                const iris_1825i_326 = pretty_name(iris_1825i_327)
-        if (iris_1825i_326.length > 1 && is_identifier(iris_1825i_326) && !this.usedNames.has(iris_1825i_326) && !this.usedNames.has('_' + iris_1825i_326)) iris_1825i_118 = iris_1825i_326;
+      let name = '';
+            const locName = this.locv_name(A, idx);
+            if (locName.length > 0) {
+				name = locName;
+            } else if (mi && (mi.name === "WaitForChild" || mi.name === 'FindFirstChild' ||
+                        mi.name === 'WaitForChildOfClass' || mi.name === 'FindFirstChildOfClass' || mi.name === 'GetService') && args.length > 0) {
+        const wstr = quoted_str(args[0])
+                const wname = pretty_name(wstr)
+        if (wname.length > 1 && is_identifier(wname) && !this.usedNames.has(wname) && !this.usedNames.has('_' + wname)) name = wname;
       }
 
-      if (iris_1825i_118.length === 0) {
-            const iris_1825i_328 = infer_call_name(iris_1825i_168);
-            if (iris_1825i_328.length > 1 && is_identifier(iris_1825i_328) && !this.usedNames.has(iris_1825i_328)) iris_1825i_118 = iris_1825i_328;
+      if (name.length === 0) {
+            const got = infer_call_name(expr);
+            if (got.length > 1 && is_identifier(got) && !this.usedNames.has(got)) name = got;
       }
-      if (iris_1825i_118.length > 0 && iris_1825i_316 && (iris_1825i_316.name === "WaitForChild" || iris_1825i_316.name === "FindFirstChild" ||
-                iris_1825i_316.name === 'WaitForChildOfClass' || iris_1825i_316.name === 'FindFirstChildOfClass' || iris_1825i_316.name === 'GetService')) {
-        const iris_1825i_326 = pretty_name(quoted_str(iris_1825i_317[0]));
-				if (iris_1825i_118 === iris_1825i_326 && !this.alive(iris_1825i_119, iris_1825i_242) && !this.captured[iris_1825i_242] &&
-					this.locv_name(iris_1825i_242, iris_1825i_119).length === 0) iris_1825i_118 = "_" + iris_1825i_118
+      if (name.length > 0 && mi && (mi.name === "WaitForChild" || mi.name === "FindFirstChild" ||
+                mi.name === 'WaitForChildOfClass' || mi.name === 'FindFirstChildOfClass' || mi.name === 'GetService')) {
+        const wname = pretty_name(quoted_str(args[0]));
+				if (name === wname && !this.alive(idx, A) && !this.captured[A] &&
+					this.locv_name(A, idx).length === 0) name = "_" + name
       }
-         if (iris_1825i_118.length === 0) iris_1825i_118 = this.regName[iris_1825i_242].length === 0 ? this.fresh_name("v", iris_1825i_168.ty ? iris_1825i_168.ty.name : null) : this.regName[iris_1825i_242]
-      this.usedNames.add(iris_1825i_118)
-            this.regName[iris_1825i_242] = iris_1825i_118
-      this.regDeclared[iris_1825i_242] = true;
-         this.reg[iris_1825i_242] = this.leaf(iris_1825i_118);
-            this.regOrigin[iris_1825i_242] = iris_1825i_168;
-			if (iris_1825i_168.ty) this.regTy[iris_1825i_242] = iris_1825i_168.ty;
-			this.assign(iris_1825i_4, typed_local(iris_1825i_118, iris_1825i_168.ty), iris_1825i_168);
-            this.maxLocals = Math.max(this.maxLocals, iris_1825i_242 + 1)
-			return iris_1825i_119 + 1
+         if (name.length === 0) name = this.regName[A].length === 0 ? this.fresh_name("v", expr.ty ? expr.ty.name : null) : this.regName[A]
+      this.usedNames.add(name)
+            this.regName[A] = name
+      this.regDeclared[A] = true;
+         this.reg[A] = this.leaf(name);
+            this.regOrigin[A] = expr;
+			if (expr.ty) this.regTy[A] = expr.ty;
+			this.assign(out, typed_local(name, expr.ty), expr);
+            this.maxLocals = Math.max(this.maxLocals, A + 1)
+			return idx + 1
     }
-        const iris_1825i_329 = []
-    for (let iris_1825i_125 = 0; iris_1825i_125 < iris_1825i_258; iris_1825i_125++) {
-            const iris_1825i_54 = iris_1825i_242 + iris_1825i_125
-         let iris_1825i_238 = this.locv_name(iris_1825i_54, iris_1825i_119);
-         if (iris_1825i_238.length === 0) {
-        if (iris_1825i_168.a && iris_1825i_168.a.text === 'pcall') {
-          iris_1825i_238 = (iris_1825i_125 === 0) ? "ok" : 'result';
-				} else if (iris_1825i_125 === 0 && !this.alive(iris_1825i_119, iris_1825i_54)) {
-               iris_1825i_238 = this.throwaway(this.paramTy[0] && this.paramTy[0].name)
+        const names = []
+    for (let k = 0; k < nres; k++) {
+            const r = A + k
+         let nm = this.locv_name(r, idx);
+         if (nm.length === 0) {
+        if (expr.a && expr.a.text === 'pcall') {
+          nm = (k === 0) ? "ok" : 'result';
+				} else if (k === 0 && !this.alive(idx, r)) {
+               nm = this.throwaway(this.paramTy[0] && this.paramTy[0].name)
         } else {
-          iris_1825i_238 = this.fresh_name('v', null);
+          nm = this.fresh_name('v', null);
                 }
 			}
-      iris_1825i_329.push(iris_1825i_238)
-         this.regName[iris_1825i_54] = iris_1825i_238;
-         this.regDeclared[iris_1825i_54] = true
-			this.reg[iris_1825i_54] = this.leaf(iris_1825i_238);
-            this.maxLocals = Math.max(this.maxLocals, iris_1825i_54 + 1)
+      names.push(nm)
+         this.regName[r] = nm;
+         this.regDeclared[r] = true
+			this.reg[r] = this.leaf(nm);
+            this.maxLocals = Math.max(this.maxLocals, r + 1)
     }
-    let iris_1825i_275 = "local "
-      for (let iris_1825i_125 = 0; iris_1825i_125 < iris_1825i_329.length; iris_1825i_125++) {
-			if (iris_1825i_125) iris_1825i_275 += ", "
-      iris_1825i_275 += iris_1825i_329[iris_1825i_125]
+    let lhs = "local "
+      for (let k = 0; k < names.length; k++) {
+			if (k) lhs += ", "
+      lhs += names[k]
 		}
-      this.assign(iris_1825i_4, iris_1825i_275, iris_1825i_168)
-    return iris_1825i_119 + 1;
+      this.assign(out, lhs, expr)
+    return idx + 1;
 	}
-throwaway(iris_1825i_549) {
-        const iris_1825i_330 = this.opt;
-    if (iris_1825i_330.discardNames === 'bare') return '_'
-      if (iris_1825i_330.discardNames === 'named-except-loops' && this.inLoop) return '_';
-		return '_' + (iris_1825i_549 ? typed_prefix(iris_1825i_549) : 'argument')
+throwaway(tyHint) {
+        const opt = this.opt;
+    if (opt.discardNames === 'bare') return '_'
+      if (opt.discardNames === 'named-except-loops' && this.inLoop) return '_';
+		return '_' + (tyHint ? typed_prefix(tyHint) : 'argument')
   }
-do_loop (iris_1825i_4, iris_1825i_268, iris_1825i_550) {
-		const iris_1825i_173 = this.loops.get(iris_1825i_268)
-      const iris_1825i_331 = new iris_1825i_236()
-    iris_1825i_331.indent = iris_1825i_4.indent + 1;
+do_loop (out, h, loopExit) {
+		const l = this.loops.get(h)
+      const body = new Sink()
+    body.indent = out.indent + 1;
 
 
 
-		if (this.opt.earlyContinue && iris_1825i_173.backedge > iris_1825i_173.bodyStart) {
-			const iris_1825i_332 = iris_1825i_173.bodyStart
-         const iris_1825i_333 = i_op(this.proto.code[iris_1825i_332])
-			if (this.is_cond_jump(iris_1825i_333)) {
-            let iris_1825i_334 = jump_target(this.proto.code, iris_1825i_332)
-            // cond-jump landing on the backedge is a guard continue
-if ((iris_1825i_334 === iris_1825i_173.backedge || iris_1825i_334 === iris_1825i_173.header) && iris_1825i_332 + op_length(iris_1825i_333) < iris_1825i_173.backedge) {
-          const iris_1825i_335 = this.cond_of(iris_1825i_332, false)
-					iris_1825i_331.emit("if " + one_line(iris_1825i_335) + ' then');
-          const iris_1825i_336 = new iris_1825i_236();
-               iris_1825i_336.indent = iris_1825i_331.indent + 1;
-          iris_1825i_336.emit("continue")
-          for (const iris_1825i_337 of iris_1825i_336.lines) iris_1825i_331.lines.push(iris_1825i_337)
-               iris_1825i_331.emit("end");
-          iris_1825i_173.bodyStart = iris_1825i_332 + op_length(iris_1825i_333);
+		if (this.opt.earlyContinue && l.backedge > l.bodyStart) {
+			const g = l.bodyStart
+         const gop = i_op(this.proto.code[g])
+			if (this.is_cond_jump(gop)) {
+            let backTgt = jump_target(this.proto.code, g)
+            
+if ((backTgt === l.backedge || backTgt === l.header) && g + op_length(gop) < l.backedge) {
+          const gcond = this.cond_of(g, false)
+					body.emit("if " + one_line(gcond) + ' then');
+          const cs = new Sink();
+               cs.indent = body.indent + 1;
+          cs.emit("continue")
+          for (const ln of cs.lines) body.lines.push(ln)
+               body.emit("end");
+          l.bodyStart = g + op_length(gop);
                 }
       }
 		}
-    const iris_1825i_338 = iris_1825i_173.exit
-		const iris_1825i_339 = this.inLoop
+    const afterText = l.exit
+		const wasInLoop = this.inLoop
 		this.inLoop++
-      if (iris_1825i_173.type === iris_1825i_234) {
-            const iris_1825i_242 = iris_1825i_173.forA;
-            let iris_1825i_340 = this.locv_name(iris_1825i_242 + 3, iris_1825i_173.bodyStart);
-         if (iris_1825i_340.length === 0) iris_1825i_340 = this.fresh_name("i", "number")
-			const iris_1825i_341 = one_line(this.read_reg(iris_1825i_242 + 2))
-         const iris_1825i_342 = one_line(this.read_reg(iris_1825i_242));
-			const iris_1825i_343 = one_line(this.read_reg(iris_1825i_242 + 1));
-      const iris_1825i_344 = (iris_1825i_343 === '1') ? '' : (", " + iris_1825i_343)
-         this.name_reg(iris_1825i_242 + 3, iris_1825i_340)
-      this.regDeclared[iris_1825i_242 + 3] = true
-      this.say(iris_1825i_4, 'for ' + iris_1825i_340 + ' = ' + iris_1825i_341 + ', ' + iris_1825i_342 + iris_1825i_344 + ' do');
-			this.walk(iris_1825i_331, iris_1825i_173.bodyStart, iris_1825i_173.backedge, iris_1825i_173.exit, true, iris_1825i_268)
-      for (const iris_1825i_130 of iris_1825i_331.lines) iris_1825i_4.lines.push(iris_1825i_130);
-            this.say(iris_1825i_4, 'end')
-		} else if (iris_1825i_173.type === iris_1825i_235) {
-			const iris_1825i_242 = iris_1825i_173.forA
-			const iris_1825i_260 = Math.max(1, iris_1825i_173.varCount)
-			const iris_1825i_329 = []
-         const iris_1825i_345 = []
-            const iris_1825i_346 = iris_1825i_173.isIpairs
-         for (let iris_1825i_125 = 0; iris_1825i_125 < iris_1825i_260; iris_1825i_125++) {
-				let iris_1825i_238 = this.locv_name(iris_1825i_242 + 3 + iris_1825i_125, iris_1825i_173.bodyStart)
-        iris_1825i_345.push(iris_1825i_238.length === 0);
-        if (iris_1825i_238.length === 0) {
-          if (iris_1825i_125 === 0) iris_1825i_238 = iris_1825i_346 ? 'i' : 'k';
-					else if (iris_1825i_125 === 1) iris_1825i_238 = "v"
-          else iris_1825i_238 = this.fresh_name("v", null);
+      if (l.type === LOOP_FORNUM) {
+            const A = l.forA;
+            let var_name = this.locv_name(A + 3, l.bodyStart);
+         if (var_name.length === 0) var_name = this.fresh_name("i", "number")
+			const init = one_line(this.read_reg(A + 2))
+         const limit = one_line(this.read_reg(A));
+			const step = one_line(this.read_reg(A + 1));
+      const step_text = (step === '1') ? '' : (", " + step)
+         this.name_reg(A + 3, var_name)
+      this.regDeclared[A + 3] = true
+      this.say(out, 'for ' + var_name + ' = ' + init + ', ' + limit + step_text + ' do');
+			this.walk(body, l.bodyStart, l.backedge, l.exit, true, h)
+      for (const line of body.lines) out.lines.push(line);
+            this.say(out, 'end')
+		} else if (l.type === LOOP_FORGENERIC) {
+			const A = l.forA
+			const vc = Math.max(1, l.varCount)
+			const names = []
+         const generated = []
+            const isIpairs = l.isIpairs
+         for (let k = 0; k < vc; k++) {
+				let nm = this.locv_name(A + 3 + k, l.bodyStart)
+        generated.push(nm.length === 0);
+        if (nm.length === 0) {
+          if (k === 0) nm = isIpairs ? 'i' : 'k';
+					else if (k === 1) nm = "v"
+          else nm = this.fresh_name("v", null);
                 }
-        iris_1825i_329.push(iris_1825i_238);
-                this.name_reg(iris_1825i_242 + 3 + iris_1825i_125, iris_1825i_238)
-        this.regDeclared[iris_1825i_242 + 3 + iris_1825i_125] = true;
+        names.push(nm);
+                this.name_reg(A + 3 + k, nm)
+        this.regDeclared[A + 3 + k] = true;
       }
-      let iris_1825i_347 = iris_1825i_329[0]
-            for (let iris_1825i_125 = 1; iris_1825i_125 < iris_1825i_260; iris_1825i_125++) iris_1825i_347 += ', ' + iris_1825i_329[iris_1825i_125]
-      const iris_1825i_314 = iris_1825i_173.iterExpr ? iris_1825i_173.iterExpr : this.read_reg(iris_1825i_242 + 1);
-      const iris_1825i_315 = one_line(iris_1825i_314);
-			if (iris_1825i_346) this.say(iris_1825i_4, 'for ' + iris_1825i_347 + ' in ipairs((' + iris_1825i_315 + ')) do');
-			else this.say(iris_1825i_4, "for " + iris_1825i_347 + ' in pairs(' + iris_1825i_315 + ') do');
-			this.walk(iris_1825i_331, iris_1825i_173.bodyStart, iris_1825i_173.backedge, iris_1825i_173.exit, true, iris_1825i_268);
+      let vars = names[0]
+            for (let k = 1; k < vc; k++) vars += ', ' + names[k]
+      const tableExpr = l.iterExpr ? l.iterExpr : this.read_reg(A + 1);
+      const tableStr = one_line(tableExpr);
+			if (isIpairs) this.say(out, 'for ' + vars + ' in ipairs((' + tableStr + ')) do');
+			else this.say(out, "for " + vars + ' in pairs(' + tableStr + ') do');
+			this.walk(body, l.bodyStart, l.backedge, l.exit, true, h);
 
-      if (iris_1825i_345[0] && iris_1825i_329[0] !== '_') {
-        const iris_1825i_348 = iris_1825i_331.lines.map((iris_1825i_75) => iris_1825i_75.text).join("\n");
-        if (!new RegExp("\\b" + iris_1825i_329[0] + "\\b").test(iris_1825i_348)) {
-               const iris_1825i_210 = iris_1825i_4.lines[iris_1825i_4.lines.length - 1]
-          iris_1825i_210.text = iris_1825i_210.text.replace(new RegExp("\\b" + iris_1825i_329[0] + "\\b"), '_');
+      if (generated[0] && names[0] !== '_') {
+        const bodyText = body.lines.map((x) => x.text).join("\n");
+        if (!new RegExp("\\b" + names[0] + "\\b").test(bodyText)) {
+               const hdr = out.lines[out.lines.length - 1]
+          hdr.text = hdr.text.replace(new RegExp("\\b" + names[0] + "\\b"), '_');
 				}
             }
-      for (const iris_1825i_130 of iris_1825i_331.lines) iris_1825i_4.lines.push(iris_1825i_130);
-            this.say(iris_1825i_4, 'end')
-		} else if (iris_1825i_173.type === iris_1825i_231) {
-			const iris_1825i_274 = (iris_1825i_173.condJump >= 0) ? iris_1825i_173.condJump : iris_1825i_268;
-            if (iris_1825i_173.header < iris_1825i_274) {
-				const iris_1825i_349 = new iris_1825i_236()
-            iris_1825i_349.indent = iris_1825i_4.indent
-				this.walk(iris_1825i_349, iris_1825i_173.header, iris_1825i_274, -1, false);
+      for (const line of body.lines) out.lines.push(line);
+            this.say(out, 'end')
+		} else if (l.type === LOOP_WHILE) {
+			const cj = (l.condJump >= 0) ? l.condJump : h;
+            if (l.header < cj) {
+				const dummy = new Sink()
+            dummy.indent = out.indent
+				this.walk(dummy, l.header, cj, -1, false);
       }
-      const iris_1825i_287 = this.cond_of(iris_1825i_274, true);
-         this.say(iris_1825i_4, 'while ' + one_line(iris_1825i_287) + ' do')
-      this.walk(iris_1825i_331, iris_1825i_173.bodyStart, iris_1825i_173.backedge, iris_1825i_173.exit, true, iris_1825i_268);
-      for (const iris_1825i_130 of iris_1825i_331.lines) iris_1825i_4.lines.push(iris_1825i_130)
-      this.say(iris_1825i_4, "end");
-    } else if (iris_1825i_173.type === iris_1825i_233) {
-      this.say(iris_1825i_4, 'repeat');
-            this.walk(iris_1825i_331, iris_1825i_173.bodyStart, iris_1825i_173.backedge, iris_1825i_173.exit, true, iris_1825i_268)
-			for (const iris_1825i_130 of iris_1825i_331.lines) iris_1825i_4.lines.push(iris_1825i_130)
-         const iris_1825i_287 = this.cond_of(iris_1825i_173.backedge, false);
-			this.say(iris_1825i_4, 'until ' + one_line(iris_1825i_287));
+      const cond = this.cond_of(cj, true);
+         this.say(out, 'while ' + one_line(cond) + ' do')
+      this.walk(body, l.bodyStart, l.backedge, l.exit, true, h);
+      for (const line of body.lines) out.lines.push(line)
+      this.say(out, "end");
+    } else if (l.type === LOOP_REPEAT) {
+      this.say(out, 'repeat');
+            this.walk(body, l.bodyStart, l.backedge, l.exit, true, h)
+			for (const line of body.lines) out.lines.push(line)
+         const cond = this.cond_of(l.backedge, false);
+			this.say(out, 'until ' + one_line(cond));
     } else {
-            this.say(iris_1825i_4, 'while true do');
-			this.walk(iris_1825i_331, iris_1825i_173.bodyStart, iris_1825i_173.backedge, iris_1825i_173.exit, true, iris_1825i_268)
-      for (const iris_1825i_130 of iris_1825i_331.lines) iris_1825i_4.lines.push(iris_1825i_130)
-      this.say(iris_1825i_4, "end")
+            this.say(out, 'while true do');
+			this.walk(body, l.bodyStart, l.backedge, l.exit, true, h)
+      for (const line of body.lines) out.lines.push(line)
+      this.say(out, "end")
     }
-    this.inLoop = iris_1825i_339;
-    return iris_1825i_338;
+    this.inLoop = wasInLoop;
+    return afterText;
     }
 
 
-do_ifs(iris_1825i_4, iris_1825i_97, iris_1825i_98, iris_1825i_550, iris_1825i_551) {
-      const iris_1825i_350 = []
-		let iris_1825i_195 = iris_1825i_97;
-		let iris_1825i_351 = -1
-    while (iris_1825i_195 < iris_1825i_98 && iris_1825i_195 < this.n) {
-      const iris_1825i_30 = i_op(this.proto.code[iris_1825i_195]);
-			if (!this.is_cond_jump(iris_1825i_30)) break;
-      const iris_1825i_287 = this.cond_of(iris_1825i_195, true)
-            const iris_1825i_288 = iris_1825i_195 + op_length(iris_1825i_30)
-			const iris_1825i_283 = jump_target(this.proto.code, iris_1825i_195);
-            if (iris_1825i_283 <= iris_1825i_195 || iris_1825i_283 > this.n) break;
-			const iris_1825i_352 = iris_1825i_283;
-			let iris_1825i_353 = iris_1825i_352
-			let iris_1825i_354 = -1
-      let iris_1825i_67 = iris_1825i_288;
-      while (iris_1825i_67 < iris_1825i_352) { iris_1825i_354 = iris_1825i_67; iris_1825i_67 += op_length(i_op(this.proto.code[iris_1825i_67])) }
-      let iris_1825i_355 = false;
-            let iris_1825i_356 = iris_1825i_352;
-         if (iris_1825i_354 >= 0 && i_op(this.proto.code[iris_1825i_354]) === iris_1825i_13.JUMP) {
-            const iris_1825i_357 = jump_target(this.proto.code, iris_1825i_354);
-        if (iris_1825i_357 > iris_1825i_352 && iris_1825i_357 <= this.n && !(iris_1825i_551 && iris_1825i_357 === iris_1825i_550)) {
-          iris_1825i_355 = true;
-                    iris_1825i_353 = iris_1825i_354
-          iris_1825i_356 = iris_1825i_357;
+do_ifs(out, start, end, loopExit, inLoop) {
+      const branches = []
+		let cur = start;
+		let join = -1
+    while (cur < end && cur < this.n) {
+      const op = i_op(this.proto.code[cur]);
+			if (!this.is_cond_jump(op)) break;
+      const cond = this.cond_of(cur, true)
+            const thenStart = cur + op_length(op)
+			const target = jump_target(this.proto.code, cur);
+            if (target <= cur || target > this.n) break;
+			const T = target;
+			let thenEnd = T
+			let lastInsn = -1
+      let c = thenStart;
+      while (c < T) { lastInsn = c; c += op_length(i_op(this.proto.code[c])) }
+      let hasElse = false;
+            let outerEnd = T;
+         if (lastInsn >= 0 && i_op(this.proto.code[lastInsn]) === Op.JUMP) {
+            const eTarget = jump_target(this.proto.code, lastInsn);
+        if (eTarget > T && eTarget <= this.n && !(inLoop && eTarget === loopExit)) {
+          hasElse = true;
+                    thenEnd = lastInsn
+          outerEnd = eTarget;
                 }
          }
-      iris_1825i_350.push({ cond: iris_1825i_287, bodyStart: iris_1825i_288, bodyEnd: iris_1825i_353, isElse: false })
-            if (iris_1825i_355) {
-        const iris_1825i_358 = i_op(this.proto.code[iris_1825i_352])
-                if (this.is_cond_jump(iris_1825i_358) && jump_target(this.proto.code, iris_1825i_352) > iris_1825i_352) {
-          iris_1825i_195 = iris_1825i_352
+      branches.push({ cond, bodyStart: thenStart, bodyEnd: thenEnd, isElse: false })
+            if (hasElse) {
+        const eop = i_op(this.proto.code[T])
+                if (this.is_cond_jump(eop) && jump_target(this.proto.code, T) > T) {
+          cur = T
                continue;
             }
-				iris_1825i_350.push({ bodyStart: iris_1825i_352, bodyEnd: iris_1825i_356, isElse: true });
-				iris_1825i_351 = iris_1825i_356
+				branches.push({ bodyStart: T, bodyEnd: outerEnd, isElse: true });
+				join = outerEnd
         break;
             }
-         iris_1825i_351 = iris_1825i_352
+         join = T
 			break;
     }
-    if (iris_1825i_351 < 0) iris_1825i_351 = Math.max(iris_1825i_97 + 1, jump_target(this.proto.code, iris_1825i_97));
+    if (join < 0) join = Math.max(start + 1, jump_target(this.proto.code, start));
 
-        if (this.opt.earlyReturn && iris_1825i_350.length === 1 && iris_1825i_350[0].bodyEnd - iris_1825i_350[0].bodyStart <= 2) {
-         const iris_1825i_359 = iris_1825i_350[0].bodyStart
-      if (iris_1825i_359 < this.n && i_op(this.proto.code[iris_1825i_359]) === iris_1825i_13.RETURN) {
-        const iris_1825i_255 = i_b(this.proto.code[iris_1825i_359])
-            if (iris_1825i_255 === 1) {
-					this.say(iris_1825i_4, 'if ' + one_line(iris_1825i_350[0].cond) + ' then');
-               const iris_1825i_360 = new iris_1825i_236();
-          iris_1825i_360.indent = iris_1825i_4.indent + 1;
-					iris_1825i_360.emit("return");
-                    for (const iris_1825i_130 of iris_1825i_360.lines) iris_1825i_4.lines.push(iris_1825i_130)
-                    this.say(iris_1825i_4, "end");
-          return iris_1825i_351;
+        if (this.opt.earlyReturn && branches.length === 1 && branches[0].bodyEnd - branches[0].bodyStart <= 2) {
+         const bs = branches[0].bodyStart
+      if (bs < this.n && i_op(this.proto.code[bs]) === Op.RETURN) {
+        const B = i_b(this.proto.code[bs])
+            if (B === 1) {
+					this.say(out, 'if ' + one_line(branches[0].cond) + ' then');
+               const retSink = new Sink();
+          retSink.indent = out.indent + 1;
+					retSink.emit("return");
+                    for (const line of retSink.lines) out.lines.push(line)
+                    this.say(out, "end");
+          return join;
 				}
       }
 		}
-      for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_350.length; iris_1825i_5++) {
-      const iris_1825i_47 = iris_1825i_350[iris_1825i_5]
-            const iris_1825i_361 = new iris_1825i_236();
-      iris_1825i_361.indent = iris_1825i_4.indent + 1;
-			this.walk(iris_1825i_361, iris_1825i_47.bodyStart, iris_1825i_47.bodyEnd, iris_1825i_550, iris_1825i_551)
-         if (iris_1825i_47.isElse) {
-            if (iris_1825i_361.lines.length === 0) continue;
-				this.say(iris_1825i_4, 'else');
-      } else if (iris_1825i_5 === 0) {
-            this.say(iris_1825i_4, 'if ' + one_line(iris_1825i_47.cond) + ' then');
+      for (let i = 0; i < branches.length; i++) {
+      const b = branches[i]
+            const sub = new Sink();
+      sub.indent = out.indent + 1;
+			this.walk(sub, b.bodyStart, b.bodyEnd, loopExit, inLoop)
+         if (b.isElse) {
+            if (sub.lines.length === 0) continue;
+				this.say(out, 'else');
+      } else if (i === 0) {
+            this.say(out, 'if ' + one_line(b.cond) + ' then');
          } else {
-				this.say(iris_1825i_4, "elseif " + one_line(iris_1825i_47.cond) + ' then')
+				this.say(out, "elseif " + one_line(b.cond) + ' then')
 			}
-      for (const iris_1825i_130 of iris_1825i_361.lines) iris_1825i_4.lines.push(iris_1825i_130)
+      for (const line of sub.lines) out.lines.push(line)
     }
-      this.say(iris_1825i_4, "end")
-    return iris_1825i_351;
+      this.say(out, "end")
+    return join;
   }
-walk(iris_1825i_4, iris_1825i_97, iris_1825i_98, iris_1825i_550, iris_1825i_551, iris_1825i_552) {
-      if (++iris_1825i_230 > 100) { iris_1825i_230--; return }
+walk(out, start, end, loopExit, inLoop, owningLoopHeader) {
+      if (++walkDepth > 100) { walkDepth--; return }
     try {
-			let iris_1825i_36 = iris_1825i_97;
-      while (iris_1825i_36 < iris_1825i_98 && iris_1825i_36 < this.n) {
-            this.currentPc = iris_1825i_36
-                const iris_1825i_229 = this.loops.get(iris_1825i_36)
-        if (iris_1825i_229 && iris_1825i_229.header !== iris_1825i_552) {
-               iris_1825i_36 = this.do_loop(iris_1825i_4, iris_1825i_36, iris_1825i_550)
+			let pc = start;
+      while (pc < end && pc < this.n) {
+            this.currentPc = pc
+                const lit = this.loops.get(pc)
+        if (lit && lit.header !== owningLoopHeader) {
+               pc = this.do_loop(out, pc, loopExit)
           continue
         }
-                const iris_1825i_37 = this.proto.code[iris_1825i_36]
-				const iris_1825i_30 = i_op(iris_1825i_37);
-        if (this.is_cond_jump(iris_1825i_30)) {
-          const iris_1825i_362 = this.maybe_if_expr(iris_1825i_4, iris_1825i_36)
-          if (iris_1825i_362 > 0) { iris_1825i_36 = iris_1825i_362; continue }
-					if (jump_target(this.proto.code, iris_1825i_36) > iris_1825i_36) {
-						iris_1825i_36 = this.do_ifs(iris_1825i_4, iris_1825i_36, iris_1825i_98, iris_1825i_550, iris_1825i_551)
+                const insn = this.proto.code[pc]
+				const op = i_op(insn);
+        if (this.is_cond_jump(op)) {
+          const next = this.maybe_if_expr(out, pc)
+          if (next > 0) { pc = next; continue }
+					if (jump_target(this.proto.code, pc) > pc) {
+						pc = this.do_ifs(out, pc, end, loopExit, inLoop)
                         continue;
           }
-          iris_1825i_36 += op_length(iris_1825i_30);
+          pc += op_length(op);
                continue;
             }
-            switch (iris_1825i_30) {
-               case iris_1825i_13.NOP: case iris_1825i_13.BREAK: case iris_1825i_13.COVERAGE: case iris_1825i_13.NATIVECALL:
-                    case iris_1825i_13.PREPVARARGS: case iris_1825i_13.CLOSEUPVALS:
-            iris_1825i_36 += op_length(iris_1825i_30); break;
-					case iris_1825i_13.FASTCALL: case iris_1825i_13.FASTCALL1: case iris_1825i_13.FASTCALL2: case iris_1825i_13.FASTCALL2K: case iris_1825i_13.FASTCALL3:
-          case iris_1825i_13.FASTPCALL:
-                  iris_1825i_36 = this.skip_fast_call(iris_1825i_4, iris_1825i_36); break;
-               case iris_1825i_13.JUMP: case iris_1825i_13.JUMPBACK: case iris_1825i_13.JUMPX: {
-            const iris_1825i_163 = jump_target(this.proto.code, iris_1825i_36);
-						if (iris_1825i_163 === iris_1825i_550 && iris_1825i_551) {
-							this.say(iris_1825i_4, 'break');
-              iris_1825i_36 = iris_1825i_98
+            switch (op) {
+               case Op.NOP: case Op.BREAK: case Op.COVERAGE: case Op.NATIVECALL:
+                    case Op.PREPVARARGS: case Op.CLOSEUPVALS:
+            pc += op_length(op); break;
+					case Op.FASTCALL: case Op.FASTCALL1: case Op.FASTCALL2: case Op.FASTCALL2K: case Op.FASTCALL3:
+          case Op.FASTPCALL:
+                  pc = this.skip_fast_call(out, pc); break;
+               case Op.JUMP: case Op.JUMPBACK: case Op.JUMPX: {
+            const t = jump_target(this.proto.code, pc);
+						if (t === loopExit && inLoop) {
+							this.say(out, 'break');
+              pc = end
 						} else {
-              iris_1825i_36 += op_length(iris_1825i_30)
+              pc += op_length(op)
 						}
             break
 					}
-          case iris_1825i_13.LOADNIL: {
-            const iris_1825i_47 = i_b(iris_1825i_37)
-            for (let iris_1825i_54 = i_a(iris_1825i_37); iris_1825i_54 <= i_a(iris_1825i_37) + iris_1825i_47 && iris_1825i_54 < this.R; iris_1825i_54++) {
-              if (this.isMain && (iris_1825i_54 === 12 || iris_1825i_54 === 13 || iris_1825i_54 === 14 || iris_1825i_54 === 25 || iris_1825i_54 === 26 || iris_1825i_54 === 27) && !this.regDeclared[iris_1825i_54]) {
-								let iris_1825i_118 = this.locv_name(iris_1825i_54, iris_1825i_36)
-                if (iris_1825i_118.length === 0) iris_1825i_118 = this.fresh_name('v')
-								this.regName[iris_1825i_54] = iris_1825i_118
-                                this.regDeclared[iris_1825i_54] = true
-                this.reg[iris_1825i_54] = this.leaf(iris_1825i_118);
-                this.assign(iris_1825i_4, 'local ' + iris_1825i_118, this.leaf('nil'));
-                this.maxLocals = Math.max(this.maxLocals, iris_1825i_54 + 1);
-                     } else if (this.regDeclared[iris_1825i_54]) {
-                this.assign(iris_1825i_4, this.regName[iris_1825i_54], this.leaf("nil"))
-                this.reg[iris_1825i_54] = this.leaf(this.regName[iris_1825i_54]);
+          case Op.LOADNIL: {
+            const b = i_b(insn)
+            for (let r = i_a(insn); r <= i_a(insn) + b && r < this.R; r++) {
+              if (this.isMain && (r === 12 || r === 13 || r === 14 || r === 25 || r === 26 || r === 27) && !this.regDeclared[r]) {
+								let name = this.locv_name(r, pc)
+                if (name.length === 0) name = this.fresh_name('v')
+								this.regName[r] = name
+                                this.regDeclared[r] = true
+                this.reg[r] = this.leaf(name);
+                this.assign(out, 'local ' + name, this.leaf('nil'));
+                this.maxLocals = Math.max(this.maxLocals, r + 1);
+                     } else if (this.regDeclared[r]) {
+                this.assign(out, this.regName[r], this.leaf("nil"))
+                this.reg[r] = this.leaf(this.regName[r]);
                      } else {
-                                this.reg[iris_1825i_54] = this.leaf('nil')
+                                this.reg[r] = this.leaf('nil')
               }
 						}
-                        ++iris_1825i_36
+                        ++pc
 						break;
                }
-                    case iris_1825i_13.LOADB: {
-						const iris_1825i_242 = i_a(iris_1825i_37)
-						const iris_1825i_193 = this.leaf(i_b(iris_1825i_37) ? 'true' : "false")
-                  iris_1825i_193.ty = ty(1, 'boolean')
-            if (this.regDeclared[iris_1825i_242]) {
-              this.assign(iris_1825i_4, this.regName[iris_1825i_242], iris_1825i_193);
-                            this.reg[iris_1825i_242] = this.leaf(this.regName[iris_1825i_242])
+                    case Op.LOADB: {
+						const A = i_a(insn)
+						const val = this.leaf(i_b(insn) ? 'true' : "false")
+                  val.ty = ty(1, 'boolean')
+            if (this.regDeclared[A]) {
+              this.assign(out, this.regName[A], val);
+                            this.reg[A] = this.leaf(this.regName[A])
 						} else {
-							this.reg[iris_1825i_242] = iris_1825i_193;
+							this.reg[A] = val;
 						}
-                        this.regTy[iris_1825i_242] = ty(1, 'boolean');
-                        iris_1825i_36 += 1 + i_c(iris_1825i_37)
+                        this.regTy[A] = ty(1, 'boolean');
+                        pc += 1 + i_c(insn)
 						break
                     }
-               case iris_1825i_13.LOADN: {
-                  const iris_1825i_242 = i_a(iris_1825i_37);
-            const iris_1825i_193 = this.leaf(String(i_d(iris_1825i_37)));
-						iris_1825i_193.ty = ty(1, 'number');
-						if (this.isMain && (iris_1825i_242 === 15 || iris_1825i_242 === 22 || iris_1825i_242 === 23 || iris_1825i_242 === 28) && !this.regDeclared[iris_1825i_242]) {
-                            let iris_1825i_118 = this.locv_name(iris_1825i_242, iris_1825i_36)
-                     if (iris_1825i_118.length === 0) iris_1825i_118 = this.fresh_name('v', 'number');
-                     this.regName[iris_1825i_242] = iris_1825i_118;
-							this.regDeclared[iris_1825i_242] = true;
-              this.reg[iris_1825i_242] = this.leaf(iris_1825i_118);
-              this.assign(iris_1825i_4, typed_local(iris_1825i_118, ty(1, 'number')), iris_1825i_193)
-              this.maxLocals = Math.max(this.maxLocals, iris_1825i_242 + 1);
-						} else if (this.regDeclared[iris_1825i_242]) {
-                            this.assign(iris_1825i_4, this.regName[iris_1825i_242], iris_1825i_193)
-              this.reg[iris_1825i_242] = this.leaf(this.regName[iris_1825i_242])
+               case Op.LOADN: {
+                  const A = i_a(insn);
+            const val = this.leaf(String(i_d(insn)));
+						val.ty = ty(1, 'number');
+						if (this.isMain && (A === 15 || A === 22 || A === 23 || A === 28) && !this.regDeclared[A]) {
+                            let name = this.locv_name(A, pc)
+                     if (name.length === 0) name = this.fresh_name('v', 'number');
+                     this.regName[A] = name;
+							this.regDeclared[A] = true;
+              this.reg[A] = this.leaf(name);
+              this.assign(out, typed_local(name, ty(1, 'number')), val)
+              this.maxLocals = Math.max(this.maxLocals, A + 1);
+						} else if (this.regDeclared[A]) {
+                            this.assign(out, this.regName[A], val)
+              this.reg[A] = this.leaf(this.regName[A])
                   } else {
-							this.reg[iris_1825i_242] = iris_1825i_193
+							this.reg[A] = val
             }
-						this.regTy[iris_1825i_242] = ty(1, "number");
-                  ++iris_1825i_36;
+						this.regTy[A] = ty(1, "number");
+                  ++pc;
                   break
                }
-                    case iris_1825i_13.LOADK: {
-						const iris_1825i_242 = i_a(iris_1825i_37)
-            const iris_1825i_67 = this.const_at(i_d(iris_1825i_37))
-                  if (iris_1825i_67 && iris_1825i_67.kind === iris_1825i_14.String) this.strConstOf.set(iris_1825i_242, iris_1825i_67.str)
-                  const iris_1825i_193 = this.leaf(this.const_from(i_d(iris_1825i_37)))
-                  iris_1825i_193.ty = iris_1825i_67 ? hint_from_const(iris_1825i_67) : null;
-                  if (this.isMain && (iris_1825i_242 === 8 || iris_1825i_242 === 11 || iris_1825i_242 === 21 || iris_1825i_242 === 24) && !this.regDeclared[iris_1825i_242]) {
-              let iris_1825i_118 = this.locv_name(iris_1825i_242, iris_1825i_36);
-							if (iris_1825i_118.length === 0) iris_1825i_118 = this.fresh_name('v', iris_1825i_193.ty ? iris_1825i_193.ty.name : null)
-              this.regName[iris_1825i_242] = iris_1825i_118
-                     this.regDeclared[iris_1825i_242] = true;
-              this.reg[iris_1825i_242] = this.leaf(iris_1825i_118)
-              this.assign(iris_1825i_4, typed_local(iris_1825i_118, iris_1825i_193.ty), iris_1825i_193);
-              this.maxLocals = Math.max(this.maxLocals, iris_1825i_242 + 1)
-						} else if (this.regDeclared[iris_1825i_242]) {
-              this.assign(iris_1825i_4, this.regName[iris_1825i_242], iris_1825i_193);
-                     this.reg[iris_1825i_242] = this.leaf(this.regName[iris_1825i_242])
+                    case Op.LOADK: {
+						const A = i_a(insn)
+            const c = this.const_at(i_d(insn))
+                  if (c && c.kind === ConstK.String) this.strConstOf.set(A, c.str)
+                  const val = this.leaf(this.const_from(i_d(insn)))
+                  val.ty = c ? hint_from_const(c) : null;
+                  if (this.isMain && (A === 8 || A === 11 || A === 21 || A === 24) && !this.regDeclared[A]) {
+              let name = this.locv_name(A, pc);
+							if (name.length === 0) name = this.fresh_name('v', val.ty ? val.ty.name : null)
+              this.regName[A] = name
+                     this.regDeclared[A] = true;
+              this.reg[A] = this.leaf(name)
+              this.assign(out, typed_local(name, val.ty), val);
+              this.maxLocals = Math.max(this.maxLocals, A + 1)
+						} else if (this.regDeclared[A]) {
+              this.assign(out, this.regName[A], val);
+                     this.reg[A] = this.leaf(this.regName[A])
 						} else {
-              this.reg[iris_1825i_242] = iris_1825i_193
+              this.reg[A] = val
             }
-						if (iris_1825i_193.ty) this.regTy[iris_1825i_242] = iris_1825i_193.ty;
-                  ++iris_1825i_36;
+						if (val.ty) this.regTy[A] = val.ty;
+                  ++pc;
                   break
 					}
-					case iris_1825i_13.LOADKX: {
-						const iris_1825i_242 = i_a(iris_1825i_37)
-						if (iris_1825i_36 + 1 < this.n) {
-                            const iris_1825i_67 = this.const_at(this.proto.code[iris_1825i_36 + 1])
-              const iris_1825i_193 = this.leaf(this.const_from(this.proto.code[iris_1825i_36 + 1]))
-              iris_1825i_193.ty = iris_1825i_67 ? hint_from_const(iris_1825i_67) : null;
-                            if (this.regDeclared[iris_1825i_242]) {
-                        this.assign(iris_1825i_4, this.regName[iris_1825i_242], iris_1825i_193);
-                                this.reg[iris_1825i_242] = this.leaf(this.regName[iris_1825i_242]);
+					case Op.LOADKX: {
+						const A = i_a(insn)
+						if (pc + 1 < this.n) {
+                            const c = this.const_at(this.proto.code[pc + 1])
+              const val = this.leaf(this.const_from(this.proto.code[pc + 1]))
+              val.ty = c ? hint_from_const(c) : null;
+                            if (this.regDeclared[A]) {
+                        this.assign(out, this.regName[A], val);
+                                this.reg[A] = this.leaf(this.regName[A]);
               } else {
-								this.reg[iris_1825i_242] = iris_1825i_193;
+								this.reg[A] = val;
 							}
-							if (iris_1825i_193.ty) this.regTy[iris_1825i_242] = iris_1825i_193.ty
+							if (val.ty) this.regTy[A] = val.ty
                   }
-                        iris_1825i_36 += 2
+                        pc += 2
             break
 					}
-					case iris_1825i_13.MOVE: {
-            const iris_1825i_242 = i_a(iris_1825i_37)
-                        const iris_1825i_193 = this.read_reg(i_b(iris_1825i_37))
-                        if (this.regDeclared[iris_1825i_242]) {
-							this.assign(iris_1825i_4, this.regName[iris_1825i_242], iris_1825i_193);
-							this.reg[iris_1825i_242] = this.leaf(this.regName[iris_1825i_242]);
+					case Op.MOVE: {
+            const A = i_a(insn)
+                        const val = this.read_reg(i_b(insn))
+                        if (this.regDeclared[A]) {
+							this.assign(out, this.regName[A], val);
+							this.reg[A] = this.leaf(this.regName[A]);
                         } else {
-                     this.reg[iris_1825i_242] = iris_1825i_193;
+                     this.reg[A] = val;
                         }
-            this.regTy[iris_1825i_242] = this.regTy[i_b(iris_1825i_37)] || null;
-        if (this.strConstOf.has(i_b(iris_1825i_37))) this.strConstOf.set(iris_1825i_242, this.strConstOf.get(i_b(iris_1825i_37)));
-						++iris_1825i_36;
+            this.regTy[A] = this.regTy[i_b(insn)] || null;
+        if (this.strConstOf.has(i_b(insn))) this.strConstOf.set(A, this.strConstOf.get(i_b(insn)));
+						++pc;
             break
           }
-                    case iris_1825i_13.GETGLOBAL: {
-                  if (iris_1825i_36 + 1 < this.n) {
-                     const iris_1825i_307 = this.const_at(this.proto.code[iris_1825i_36 + 1]);
-              const iris_1825i_363 = (iris_1825i_307 && iris_1825i_307.kind === iris_1825i_14.String) ? iris_1825i_307.str : "?";
-              this.store_reg(iris_1825i_4, i_a(iris_1825i_37), iris_1825i_36, this.leaf(iris_1825i_363), false)
+                    case Op.GETGLOBAL: {
+                  if (pc + 1 < this.n) {
+                     const gc = this.const_at(this.proto.code[pc + 1]);
+              const text = (gc && gc.kind === ConstK.String) ? gc.str : "?";
+              this.store_reg(out, i_a(insn), pc, this.leaf(text), false)
 						}
-						iris_1825i_36 += 2;
+						pc += 2;
 						break
                }
-          case iris_1825i_13.SETGLOBAL: {
-						if (iris_1825i_36 + 1 < this.n) {
-							const iris_1825i_307 = this.const_at(this.proto.code[iris_1825i_36 + 1])
-              const iris_1825i_118 = (iris_1825i_307 && iris_1825i_307.kind === iris_1825i_14.String) ? iris_1825i_307.str : ""
-              if (iris_1825i_118.length > 0) this.assign(iris_1825i_4, iris_1825i_118, this.read_reg(i_a(iris_1825i_37)))
+          case Op.SETGLOBAL: {
+						if (pc + 1 < this.n) {
+							const gc = this.const_at(this.proto.code[pc + 1])
+              const name = (gc && gc.kind === ConstK.String) ? gc.str : ""
+              if (name.length > 0) this.assign(out, name, this.read_reg(i_a(insn)))
 						}
-            iris_1825i_36 += 2;
+            pc += 2;
             break
           }
-					case iris_1825i_13.GETUPVAL: {
-						this.store_reg(iris_1825i_4, i_a(iris_1825i_37), iris_1825i_36, this.leaf(this.up_name(i_b(iris_1825i_37))), false);
-            ++iris_1825i_36
+					case Op.GETUPVAL: {
+						this.store_reg(out, i_a(insn), pc, this.leaf(this.up_name(i_b(insn))), false);
+            ++pc
             break;
 					}
-               case iris_1825i_13.SETUPVAL: {
-            this.assign(iris_1825i_4, this.up_name(i_b(iris_1825i_37)), this.read_reg(i_a(iris_1825i_37)));
-            ++iris_1825i_36
+               case Op.SETUPVAL: {
+            this.assign(out, this.up_name(i_b(insn)), this.read_reg(i_a(insn)));
+            ++pc
 						break;
           }
-               case iris_1825i_13.GETIMPORT: {
-                  if (iris_1825i_36 + 1 < this.n) {
-                     const iris_1825i_242 = i_a(iris_1825i_37);
-							let iris_1825i_364 = this.leaf(this.import_path(this.proto.code[iris_1825i_36 + 1]))
-              if (iris_1825i_36 + 2 < this.n && i_op(this.proto.code[iris_1825i_36 + 2]) === iris_1825i_13.GETTABLEKS &&
-                                i_a(this.proto.code[iris_1825i_36 + 2]) === iris_1825i_242 && i_b(this.proto.code[iris_1825i_36 + 2]) === iris_1825i_242 && iris_1825i_36 + 3 < this.n) {
-                                const iris_1825i_312 = this.const_at(this.proto.code[iris_1825i_36 + 3]);
-								if (iris_1825i_312 && iris_1825i_312.kind === iris_1825i_14.String) {
-                  iris_1825i_364 = is_identifier(iris_1825i_312.str) ? this.dot(iris_1825i_364, iris_1825i_312.str) : this.idx(iris_1825i_364, this.leaf(quote(iris_1825i_312.str)));
-                                    iris_1825i_36 += 2;
+               case Op.GETIMPORT: {
+                  if (pc + 1 < this.n) {
+                     const A = i_a(insn);
+							let imp = this.leaf(this.import_path(this.proto.code[pc + 1]))
+              if (pc + 2 < this.n && i_op(this.proto.code[pc + 2]) === Op.GETTABLEKS &&
+                                i_a(this.proto.code[pc + 2]) === A && i_b(this.proto.code[pc + 2]) === A && pc + 3 < this.n) {
+                                const kc = this.const_at(this.proto.code[pc + 3]);
+								if (kc && kc.kind === ConstK.String) {
+                  imp = is_identifier(kc.str) ? this.dot(imp, kc.str) : this.idx(imp, this.leaf(quote(kc.str)));
+                                    pc += 2;
 								}
 							}
-                            iris_1825i_364.ty = ty_expr(iris_1825i_364);
-              const iris_1825i_365 = one_line(iris_1825i_364);
+                            imp.ty = ty_expr(imp);
+              const impText = one_line(imp);
 
 
-							if (this.isMain && iris_1825i_242 === 0 && iris_1825i_365 !== 'script.Parent' && iris_1825i_365 !== 'game' && iris_1825i_365 !== 'workspace' && !this.regDeclared[iris_1825i_242]) {
-                const iris_1825i_118 = this.fresh_name('v');
-                this.regName[iris_1825i_242] = iris_1825i_118;
-                this.regDeclared[iris_1825i_242] = true;
-								this.reg[iris_1825i_242] = this.leaf(iris_1825i_118);
-                this.assign(iris_1825i_4, typed_local(iris_1825i_118, iris_1825i_364.ty), iris_1825i_364);
+							if (this.isMain && A === 0 && impText !== 'script.Parent' && impText !== 'game' && impText !== 'workspace' && !this.regDeclared[A]) {
+                const name = this.fresh_name('v');
+                this.regName[A] = name;
+                this.regDeclared[A] = true;
+								this.reg[A] = this.leaf(name);
+                this.assign(out, typed_local(name, imp.ty), imp);
                 this.maxLocals = Math.max(this.maxLocals, 1);
               } else {
-                this.reg[iris_1825i_242] = iris_1825i_364;
+                this.reg[A] = imp;
               }
-              this.regTy[iris_1825i_242] = iris_1825i_364.ty
+              this.regTy[A] = imp.ty
 						}
-						iris_1825i_36 += 2;
+						pc += 2;
             break;
 					}
-          case iris_1825i_13.GETTABLE: {
-                  this.store_reg(iris_1825i_4, i_a(iris_1825i_37), iris_1825i_36, this.idx(this.read_reg(i_b(iris_1825i_37)), this.read_reg(i_c(iris_1825i_37))), false);
-						++iris_1825i_36
+          case Op.GETTABLE: {
+                  this.store_reg(out, i_a(insn), pc, this.idx(this.read_reg(i_b(insn)), this.read_reg(i_c(insn))), false);
+						++pc
 						break
 					}
-               case iris_1825i_13.SETTABLE: {
-						const iris_1825i_366 = this.reg[i_b(iris_1825i_37)]
-                        const iris_1825i_51 = this.read_reg(i_c(iris_1825i_37))
-            const iris_1825i_193 = this.read_reg(i_a(iris_1825i_37));
-						if (iris_1825i_366 && iris_1825i_366.kind === iris_1825i_158.Table && !iris_1825i_366.built) {
-                     iris_1825i_366.keys.push(iris_1825i_51);
-                     iris_1825i_366.vals.push(iris_1825i_193)
+               case Op.SETTABLE: {
+						const table = this.reg[i_b(insn)]
+                        const key = this.read_reg(i_c(insn))
+            const val = this.read_reg(i_a(insn));
+						if (table && table.kind === ExprK.Table && !table.built) {
+                     table.keys.push(key);
+                     table.vals.push(val)
 						} else {
-              this.assign(iris_1825i_4, one_line(this.idx(iris_1825i_366, iris_1825i_51)), iris_1825i_193);
+              this.assign(out, one_line(this.idx(table, key)), val);
             }
-						++iris_1825i_36
+						++pc
             break;
           }
-               case iris_1825i_13.GETTABLEKS: {
-            if (iris_1825i_36 + 1 < this.n) {
-              const iris_1825i_67 = this.const_at(this.proto.code[iris_1825i_36 + 1]);
-							const iris_1825i_118 = (iris_1825i_67 && iris_1825i_67.kind === iris_1825i_14.String) ? iris_1825i_67.str : "";
-                            const iris_1825i_179 = this.read_reg(i_b(iris_1825i_37));
-              const iris_1825i_193 = is_identifier(iris_1825i_118) ? this.dot(iris_1825i_179, iris_1825i_118) : this.idx(iris_1825i_179, this.leaf(quote(iris_1825i_118)));
-                     this.store_reg(iris_1825i_4, i_a(iris_1825i_37), iris_1825i_36, iris_1825i_193, false);
+               case Op.GETTABLEKS: {
+            if (pc + 1 < this.n) {
+              const c = this.const_at(this.proto.code[pc + 1]);
+							const name = (c && c.kind === ConstK.String) ? c.str : "";
+                            const base = this.read_reg(i_b(insn));
+              const val = is_identifier(name) ? this.dot(base, name) : this.idx(base, this.leaf(quote(name)));
+                     this.store_reg(out, i_a(insn), pc, val, false);
                   }
-            iris_1825i_36 += 2
+            pc += 2
             break
 					}
-					case iris_1825i_13.SETTABLEKS: {
-            if (iris_1825i_36 + 1 < this.n) {
-                            const iris_1825i_67 = this.const_at(this.proto.code[iris_1825i_36 + 1])
-                            const iris_1825i_118 = (iris_1825i_67 && iris_1825i_67.kind === iris_1825i_14.String) ? iris_1825i_67.str : ""
-							const iris_1825i_366 = this.reg[i_b(iris_1825i_37)]
-							const iris_1825i_193 = this.read_reg(i_a(iris_1825i_37))
-                            if (iris_1825i_366 && iris_1825i_366.kind === iris_1825i_158.Table && !iris_1825i_366.built) {
-                                let iris_1825i_367 = false
-                                for (let iris_1825i_125 = 0; iris_1825i_125 < iris_1825i_366.keys.length; iris_1825i_125++) {
-                                    if (table_key_name(iris_1825i_366.keys[iris_1825i_125]) === iris_1825i_118) { iris_1825i_366.vals[iris_1825i_125] = iris_1825i_193; iris_1825i_367 = true; break }
+					case Op.SETTABLEKS: {
+            if (pc + 1 < this.n) {
+                            const c = this.const_at(this.proto.code[pc + 1])
+                            const name = (c && c.kind === ConstK.String) ? c.str : ""
+							const table = this.reg[i_b(insn)]
+							const val = this.read_reg(i_a(insn))
+                            if (table && table.kind === ExprK.Table && !table.built) {
+                                let found = false
+                                for (let k = 0; k < table.keys.length; k++) {
+                                    if (table_key_name(table.keys[k]) === name) { table.vals[k] = val; found = true; break }
                                 }
-                        if (!iris_1825i_367) { iris_1825i_366.keys.push(this.leaf(iris_1825i_118)); iris_1825i_366.vals.push(iris_1825i_193) }
+                        if (!found) { table.keys.push(this.leaf(name)); table.vals.push(val) }
 							} else {
-                const iris_1825i_368 = this.read_reg(i_b(iris_1825i_37))
-								const iris_1825i_275 = is_identifier(iris_1825i_118) ? (one_line(iris_1825i_368) + '.' + iris_1825i_118) : (one_line(iris_1825i_368) + '[' + quote(iris_1825i_118) + "]")
-								this.assign(iris_1825i_4, iris_1825i_275, iris_1825i_193);
+                const tbase = this.read_reg(i_b(insn))
+								const lhs = is_identifier(name) ? (one_line(tbase) + '.' + name) : (one_line(tbase) + '[' + quote(name) + "]")
+								this.assign(out, lhs, val);
                             }
             }
-						iris_1825i_36 += 2;
+						pc += 2;
             break
 					}
-					case iris_1825i_13.GETTABLEN: {
-            this.store_reg(iris_1825i_4, i_a(iris_1825i_37), iris_1825i_36, this.idx(this.read_reg(i_b(iris_1825i_37)), this.leaf(String(i_c(iris_1825i_37) + 1))), false);
-            ++iris_1825i_36;
+					case Op.GETTABLEN: {
+            this.store_reg(out, i_a(insn), pc, this.idx(this.read_reg(i_b(insn)), this.leaf(String(i_c(insn) + 1))), false);
+            ++pc;
 						break
           }
-          case iris_1825i_13.SETTABLEN: {
-            const iris_1825i_366 = this.reg[i_b(iris_1825i_37)]
-						const iris_1825i_193 = this.read_reg(i_a(iris_1825i_37))
-            const iris_1825i_51 = this.leaf(String(i_c(iris_1825i_37) + 1));
-            if (iris_1825i_366 && iris_1825i_366.kind === iris_1825i_158.Table && !iris_1825i_366.built) {
-                     iris_1825i_366.keys.push(iris_1825i_51);
-                            iris_1825i_366.vals.push(iris_1825i_193)
+          case Op.SETTABLEN: {
+            const table = this.reg[i_b(insn)]
+						const val = this.read_reg(i_a(insn))
+            const key = this.leaf(String(i_c(insn) + 1));
+            if (table && table.kind === ExprK.Table && !table.built) {
+                     table.keys.push(key);
+                            table.vals.push(val)
 						} else {
-                     this.assign(iris_1825i_4, one_line(this.idx(iris_1825i_366, iris_1825i_51)), iris_1825i_193)
+                     this.assign(out, one_line(this.idx(table, key)), val)
             }
-						++iris_1825i_36
+						++pc
             break;
                }
-                    case iris_1825i_13.GETUDATAKS: {
-            if (iris_1825i_36 + 1 < this.n) {
-              const iris_1825i_67 = this.const_at(this.proto.code[iris_1825i_36 + 1] & 0xffff)
-							const iris_1825i_118 = (iris_1825i_67 && iris_1825i_67.kind === iris_1825i_14.String) ? iris_1825i_67.str : '';
-                            const iris_1825i_179 = this.read_reg(i_b(iris_1825i_37))
-							const iris_1825i_193 = is_identifier(iris_1825i_118) ? this.dot(iris_1825i_179, iris_1825i_118) : this.idx(iris_1825i_179, this.leaf(quote(iris_1825i_118)))
-							this.store_reg(iris_1825i_4, i_a(iris_1825i_37), iris_1825i_36, iris_1825i_193, false)
+                    case Op.GETUDATAKS: {
+            if (pc + 1 < this.n) {
+              const c = this.const_at(this.proto.code[pc + 1] & 0xffff)
+							const name = (c && c.kind === ConstK.String) ? c.str : '';
+                            const base = this.read_reg(i_b(insn))
+							const val = is_identifier(name) ? this.dot(base, name) : this.idx(base, this.leaf(quote(name)))
+							this.store_reg(out, i_a(insn), pc, val, false)
 						}
-                        iris_1825i_36 += 2
+                        pc += 2
                         break;
                     }
-                    case iris_1825i_13.SETUDATAKS: {
-            if (iris_1825i_36 + 1 < this.n) {
-              const iris_1825i_67 = this.const_at(this.proto.code[iris_1825i_36 + 1] & 0xffff);
-              const iris_1825i_118 = (iris_1825i_67 && iris_1825i_67.kind === iris_1825i_14.String) ? iris_1825i_67.str : "";
-              const iris_1825i_366 = this.read_reg(i_b(iris_1825i_37))
-							const iris_1825i_193 = this.read_reg(i_a(iris_1825i_37));
-              const iris_1825i_275 = is_identifier(iris_1825i_118) ? (one_line(iris_1825i_366) + '.' + iris_1825i_118) : (one_line(iris_1825i_366) + "[" + quote(iris_1825i_118) + ']');
-                            this.assign(iris_1825i_4, iris_1825i_275, iris_1825i_193)
+                    case Op.SETUDATAKS: {
+            if (pc + 1 < this.n) {
+              const c = this.const_at(this.proto.code[pc + 1] & 0xffff);
+              const name = (c && c.kind === ConstK.String) ? c.str : "";
+              const table = this.read_reg(i_b(insn))
+							const val = this.read_reg(i_a(insn));
+              const lhs = is_identifier(name) ? (one_line(table) + '.' + name) : (one_line(table) + "[" + quote(name) + ']');
+                            this.assign(out, lhs, val)
             }
-						iris_1825i_36 += 2;
+						pc += 2;
                   break;
                     }
-          case iris_1825i_13.NEWTABLE: {
-                        const iris_1825i_242 = i_a(iris_1825i_37);
-            const iris_1825i_163 = make_expr(iris_1825i_158.Table);
-                        iris_1825i_163.ty = ty(1, 'table');
-            this.reg[iris_1825i_242] = iris_1825i_163
-						this.regOrigin[iris_1825i_242] = iris_1825i_163
-						this.regName[iris_1825i_242] = ""
-						this.regDeclared[iris_1825i_242] = false
-            this.regTy[iris_1825i_242] = iris_1825i_163.ty;
-						if (this.isMain && (iris_1825i_242 === 16 || iris_1825i_242 === 18)) {
-							const iris_1825i_118 = this.fresh_table_name();
-              this.regName[iris_1825i_242] = iris_1825i_118;
-              this.regDeclared[iris_1825i_242] = true;
-              this.reg[iris_1825i_242] = this.leaf(iris_1825i_118)
-              this.assign(iris_1825i_4, "local " + iris_1825i_118, iris_1825i_163);
-                     this.maxLocals = Math.max(this.maxLocals, iris_1825i_242 + 1);
+          case Op.NEWTABLE: {
+                        const A = i_a(insn);
+            const t = make_expr(ExprK.Table);
+                        t.ty = ty(1, 'table');
+            this.reg[A] = t
+						this.regOrigin[A] = t
+						this.regName[A] = ""
+						this.regDeclared[A] = false
+            this.regTy[A] = t.ty;
+						if (this.isMain && (A === 16 || A === 18)) {
+							const name = this.fresh_table_name();
+              this.regName[A] = name;
+              this.regDeclared[A] = true;
+              this.reg[A] = this.leaf(name)
+              this.assign(out, "local " + name, t);
+                     this.maxLocals = Math.max(this.maxLocals, A + 1);
 						}
-            iris_1825i_36 += 2
+            pc += 2
                         break;
                     }
-          case iris_1825i_13.DUPTABLE: {
-                  const iris_1825i_242 = i_a(iris_1825i_37)
-            const iris_1825i_67 = this.const_at(i_d(iris_1825i_37));
-        if (iris_1825i_67 && iris_1825i_67.kind === iris_1825i_14.String) this.strConstOf.set(iris_1825i_242, iris_1825i_67.str);
-						const iris_1825i_163 = make_expr(iris_1825i_158.Table);
-						iris_1825i_163.ty = ty(1, 'table')
-                  let iris_1825i_369 = null;
-                        if (iris_1825i_67 && (iris_1825i_67.kind === iris_1825i_14.Table || iris_1825i_67.kind === iris_1825i_14.TableWithConstants)) {
-							const iris_1825i_370 = []
-              let iris_1825i_371 = true;
-                            for (const iris_1825i_372 of iris_1825i_67.table) {
-                                const iris_1825i_312 = iris_1825i_372.key >= 0 ? this.const_at(iris_1825i_372.key) : null;
-                                if (!iris_1825i_312 || iris_1825i_312.kind !== iris_1825i_14.String || !is_identifier(iris_1825i_312.str)) { iris_1825i_371 = false; break }
-								const iris_1825i_260 = iris_1825i_372.value >= 0 ? this.const_at(iris_1825i_372.value) : null
-								let iris_1825i_373 = 'number'
-                if (iris_1825i_260) {
-                  switch (iris_1825i_260.kind) {
-                                        case iris_1825i_14.Boolean: iris_1825i_373 = "boolean"; break;
-										case iris_1825i_14.String: iris_1825i_373 = "string"; break
-										case iris_1825i_14.Number:
-										case iris_1825i_14.Integer: iris_1825i_373 = 'number'; break;
-                              default: iris_1825i_373 = 'any'; break
+          case Op.DUPTABLE: {
+                  const A = i_a(insn)
+            const c = this.const_at(i_d(insn));
+        if (c && c.kind === ConstK.String) this.strConstOf.set(A, c.str);
+						const t = make_expr(ExprK.Table);
+						t.ty = ty(1, 'table')
+                  let shapeTy = null;
+                        if (c && (c.kind === ConstK.Table || c.kind === ConstK.TableWithConstants)) {
+							const shapeParts = []
+              let shapeOk = true;
+                            for (const entry of c.table) {
+                                const kc = entry.key >= 0 ? this.const_at(entry.key) : null;
+                                if (!kc || kc.kind !== ConstK.String || !is_identifier(kc.str)) { shapeOk = false; break }
+								const vc = entry.value >= 0 ? this.const_at(entry.value) : null
+								let vtn = 'number'
+                if (vc) {
+                  switch (vc.kind) {
+                                        case ConstK.Boolean: vtn = "boolean"; break;
+										case ConstK.String: vtn = "string"; break
+										case ConstK.Number:
+										case ConstK.Integer: vtn = 'number'; break;
+                              default: vtn = 'any'; break
 									}
 								}
-                        iris_1825i_370.push(iris_1825i_312.str + ': ' + iris_1825i_373);
-                                const iris_1825i_51 = this.leaf(this.const_from(iris_1825i_372.key));
-                let iris_1825i_193;
-                                if (iris_1825i_67.kind === iris_1825i_14.TableWithConstants && iris_1825i_372.value >= 0)
-                                    iris_1825i_193 = this.leaf(this.const_from(iris_1825i_372.value));
-                                else iris_1825i_193 = this.leaf("0");
-								iris_1825i_163.keys.push(iris_1825i_51);
-                iris_1825i_163.vals.push(iris_1825i_193)
+                        shapeParts.push(kc.str + ': ' + vtn);
+                                const key = this.leaf(this.const_from(entry.key));
+                let val;
+                                if (c.kind === ConstK.TableWithConstants && entry.value >= 0)
+                                    val = this.leaf(this.const_from(entry.value));
+                                else val = this.leaf("0");
+								t.keys.push(key);
+                t.vals.push(val)
 							}
-                     if (iris_1825i_371 && iris_1825i_370.length > 0 && iris_1825i_370.length <= 24)
-                        iris_1825i_369 = ty(1, "{ " + iris_1825i_370.join(', ') + " }");
+                     if (shapeOk && shapeParts.length > 0 && shapeParts.length <= 24)
+                        shapeTy = ty(1, "{ " + shapeParts.join(', ') + " }");
                         }
-            this.reg[iris_1825i_242] = iris_1825i_163;
-                        this.regOrigin[iris_1825i_242] = iris_1825i_163
-            this.regName[iris_1825i_242] = ''
-            this.regDeclared[iris_1825i_242] = false;
-						this.regTy[iris_1825i_242] = iris_1825i_163.ty;
-            if (this.isMain && iris_1825i_242 === 19) {
-							const iris_1825i_118 = this.fresh_table_name();
-              this.regName[iris_1825i_242] = iris_1825i_118
-                     this.regDeclared[iris_1825i_242] = true;
-                            this.reg[iris_1825i_242] = this.leaf(iris_1825i_118)
-							this.assign(iris_1825i_4, typed_local(iris_1825i_118, iris_1825i_369 || iris_1825i_163.ty), iris_1825i_163);
-              this.maxLocals = Math.max(this.maxLocals, iris_1825i_242 + 1);
+            this.reg[A] = t;
+                        this.regOrigin[A] = t
+            this.regName[A] = ''
+            this.regDeclared[A] = false;
+						this.regTy[A] = t.ty;
+            if (this.isMain && A === 19) {
+							const name = this.fresh_table_name();
+              this.regName[A] = name
+                     this.regDeclared[A] = true;
+                            this.reg[A] = this.leaf(name)
+							this.assign(out, typed_local(name, shapeTy || t.ty), t);
+              this.maxLocals = Math.max(this.maxLocals, A + 1);
                   }
-            ++iris_1825i_36
+            ++pc
                         break;
           }
-          case iris_1825i_13.SETLIST: {
-            const iris_1825i_311 = i_a(iris_1825i_37);
-						const iris_1825i_374 = i_b(iris_1825i_37)
-            const iris_1825i_375 = i_c(iris_1825i_37)
-                  const iris_1825i_366 = this.reg[iris_1825i_311]
-                        if (iris_1825i_366 && iris_1825i_366.kind === iris_1825i_158.Table) {
-                     const iris_1825i_376 = iris_1825i_375 <= 1 ? 1 : iris_1825i_375 - 1
-              for (let iris_1825i_125 = 0; iris_1825i_125 < iris_1825i_376; iris_1825i_125++) {
-                                const iris_1825i_377 = this.read_reg(iris_1825i_374 + iris_1825i_125);
-								iris_1825i_366.keys.push(null);
-                iris_1825i_366.vals.push(iris_1825i_377);
+          case Op.SETLIST: {
+            const tableR = i_a(insn);
+						const baseR = i_b(insn)
+            const countCode = i_c(insn)
+                  const table = this.reg[tableR]
+                        if (table && table.kind === ExprK.Table) {
+                     const nvals = countCode <= 1 ? 1 : countCode - 1
+              for (let k = 0; k < nvals; k++) {
+                                const item = this.read_reg(baseR + k);
+								table.keys.push(null);
+                table.vals.push(item);
               }
                   }
-						iris_1825i_36 += 2
+						pc += 2
 						break
                }
-                    case iris_1825i_13.NEWCLOSURE: {
-                  if (this.isMain && this.reg[17] && this.reg[17].kind === iris_1825i_158.Table && !this.regDeclared[17]) {
-							const iris_1825i_118 = this.fresh_table_name();
-                     this.regName[17] = iris_1825i_118;
+                    case Op.NEWCLOSURE: {
+                  if (this.isMain && this.reg[17] && this.reg[17].kind === ExprK.Table && !this.regDeclared[17]) {
+							const name = this.fresh_table_name();
+                     this.regName[17] = name;
               this.regDeclared[17] = true;
-							this.assign(iris_1825i_4, "local " + iris_1825i_118, this.reg[17]);
-              this.reg[17] = this.leaf(iris_1825i_118);
+							this.assign(out, "local " + name, this.reg[17]);
+              this.reg[17] = this.leaf(name);
               this.maxLocals = Math.max(this.maxLocals, 18)
 						}
-                  iris_1825i_36 = this.new_closure(iris_1825i_4, iris_1825i_36)
+                  pc = this.new_closure(out, pc)
 						break;
 					}
-          case iris_1825i_13.DUPCLOSURE: {
-            if (this.isMain && this.reg[17] && this.reg[17].kind === iris_1825i_158.Table && !this.regDeclared[17]) {
-              const iris_1825i_118 = this.fresh_table_name();
-                     this.regName[17] = iris_1825i_118
+          case Op.DUPCLOSURE: {
+            if (this.isMain && this.reg[17] && this.reg[17].kind === ExprK.Table && !this.regDeclared[17]) {
+              const name = this.fresh_table_name();
+                     this.regName[17] = name
               this.regDeclared[17] = true
-              this.assign(iris_1825i_4, 'local ' + iris_1825i_118, this.reg[17])
-              this.reg[17] = this.leaf(iris_1825i_118)
+              this.assign(out, 'local ' + name, this.reg[17])
+              this.reg[17] = this.leaf(name)
               this.maxLocals = Math.max(this.maxLocals, 18)
                   }
-            iris_1825i_36 = this.dup_closure(iris_1825i_4, iris_1825i_36);
+            pc = this.dup_closure(out, pc);
                         break
           }
-               case iris_1825i_13.NAMECALL: case iris_1825i_13.NAMECALLUDATA: {
-                  if (iris_1825i_36 + 1 < this.n) {
-							const iris_1825i_378 = this.const_at(this.proto.code[iris_1825i_36 + 1] & 0xffff)
-                            const iris_1825i_118 = (iris_1825i_378 && iris_1825i_378.kind === iris_1825i_14.String) ? iris_1825i_378.str : "";
-                     this.reg[i_a(iris_1825i_37) + 1] = this.read_reg(i_b(iris_1825i_37));
-              const iris_1825i_316 = { name: iris_1825i_118, selfReg: i_a(iris_1825i_37) + 1 }
-              this.methodInfo[i_a(iris_1825i_37)] = iris_1825i_316;
+               case Op.NAMECALL: case Op.NAMECALLUDATA: {
+                  if (pc + 1 < this.n) {
+							const mc = this.const_at(this.proto.code[pc + 1] & 0xffff)
+                            const name = (mc && mc.kind === ConstK.String) ? mc.str : "";
+                     this.reg[i_a(insn) + 1] = this.read_reg(i_b(insn));
+              const mi = { name, selfReg: i_a(insn) + 1 }
+              this.methodInfo[i_a(insn)] = mi;
                   }
-                  iris_1825i_36 += 2;
+                  pc += 2;
 						break
           }
-          case iris_1825i_13.CALL: case iris_1825i_13.CALLFB:
-						iris_1825i_36 = this.do_call(iris_1825i_4, iris_1825i_36);
+          case Op.CALL: case Op.CALLFB:
+						pc = this.do_call(out, pc);
                   break;
-          case iris_1825i_13.RETURN: {
-            const iris_1825i_242 = i_a(iris_1825i_37);
-                  const iris_1825i_255 = i_b(iris_1825i_37);
-                  if (iris_1825i_255 === 1) {
-              this.say(iris_1825i_4, 'return');
-						} else if (iris_1825i_255 === 0) {
-              const iris_1825i_379 = (iris_1825i_242 < this.R) ? this.reg[iris_1825i_242] : null;
-              if (iris_1825i_379) {
-                        const iris_1825i_177 = render_expr(iris_1825i_379)
-								iris_1825i_4.emit('return ' + iris_1825i_177[0][1]);
-								for (let iris_1825i_5 = 1; iris_1825i_5 < iris_1825i_177.length; iris_1825i_5++) iris_1825i_4.push(iris_1825i_4.indent + iris_1825i_177[iris_1825i_5][0], iris_1825i_177[iris_1825i_5][1]);
-								if (iris_1825i_379.ty) this.lastRetTy = iris_1825i_379.ty;
-							} else this.say(iris_1825i_4, 'return');
+          case Op.RETURN: {
+            const A = i_a(insn);
+                  const B = i_b(insn);
+                  if (B === 1) {
+              this.say(out, 'return');
+						} else if (B === 0) {
+              const ret = (A < this.R) ? this.reg[A] : null;
+              if (ret) {
+                        const rl = render_expr(ret)
+								out.emit('return ' + rl[0][1]);
+								for (let i = 1; i < rl.length; i++) out.push(out.indent + rl[i][0], rl[i][1]);
+								if (ret.ty) this.lastRetTy = ret.ty;
+							} else this.say(out, 'return');
 } else {
-							const iris_1825i_376 = iris_1825i_255 - 1
-                            if (iris_1825i_376 === 1) {
-								const iris_1825i_379 = (iris_1825i_242 < this.R) ? this.reg[iris_1825i_242] : null
-								if (iris_1825i_379) {
-									const iris_1825i_177 = render_expr(iris_1825i_379)
-									iris_1825i_4.emit('return ' + iris_1825i_177[0][1])
-									for (let iris_1825i_5 = 1; iris_1825i_5 < iris_1825i_177.length; iris_1825i_5++) iris_1825i_4.push(iris_1825i_4.indent + iris_1825i_177[iris_1825i_5][0], iris_1825i_177[iris_1825i_5][1])
-									if (iris_1825i_379.ty) this.lastRetTy = iris_1825i_379.ty;
+							const nvals = B - 1
+                            if (nvals === 1) {
+								const ret = (A < this.R) ? this.reg[A] : null
+								if (ret) {
+									const rl = render_expr(ret)
+									out.emit('return ' + rl[0][1])
+									for (let i = 1; i < rl.length; i++) out.push(out.indent + rl[i][0], rl[i][1])
+									if (ret.ty) this.lastRetTy = ret.ty;
 								} else {
-									this.say(iris_1825i_4, 'return')
+									this.say(out, 'return')
 								}
 							} else {
-								let iris_1825i_380 = ''
-								for (let iris_1825i_125 = 0; iris_1825i_125 < iris_1825i_376; iris_1825i_125++) {
-									if (iris_1825i_125) iris_1825i_380 += ', '
-									iris_1825i_380 += one_line(this.read_reg(iris_1825i_242 + iris_1825i_125))
+								let vals = ''
+								for (let k = 0; k < nvals; k++) {
+									if (k) vals += ', '
+									vals += one_line(this.read_reg(A + k))
 								}
-								this.say(iris_1825i_4, 'return ' + iris_1825i_380)
-								const iris_1825i_381 = this.regTy[iris_1825i_242]
-								if (iris_1825i_381) this.lastRetTy = iris_1825i_381;
+								this.say(out, 'return ' + vals)
+								const t0 = this.regTy[A]
+								if (t0) this.lastRetTy = t0;
 							}
                         }
-                        ++iris_1825i_36;
+                        ++pc;
             break
                     }
-					case iris_1825i_13.NOT:
-						this.store_reg(iris_1825i_4, i_a(iris_1825i_37), iris_1825i_36, this.un('not', this.read_reg(i_b(iris_1825i_37))), false);
-            ++iris_1825i_36; break;
-                    case iris_1825i_13.MINUS:
-            this.store_reg(iris_1825i_4, i_a(iris_1825i_37), iris_1825i_36, this.un('-', this.read_reg(i_b(iris_1825i_37))), false);
-            ++iris_1825i_36; break
-					case iris_1825i_13.LENGTH:
-                  this.store_reg(iris_1825i_4, i_a(iris_1825i_37), iris_1825i_36, this.un('#', this.read_reg(i_b(iris_1825i_37))), false);
-						++iris_1825i_36; break;
-					case iris_1825i_13.ADD: case iris_1825i_13.SUB: case iris_1825i_13.MUL: case iris_1825i_13.DIV: case iris_1825i_13.MOD:
-          case iris_1825i_13.POW: case iris_1825i_13.IDIV: {
-                  const iris_1825i_382 = iris_1825i_30 === iris_1825i_13.ADD ? '+' : iris_1825i_30 === iris_1825i_13.SUB ? "-" : iris_1825i_30 === iris_1825i_13.MUL ? "*" :
-              iris_1825i_30 === iris_1825i_13.DIV ? '/' : iris_1825i_30 === iris_1825i_13.MOD ? "%" : iris_1825i_30 === iris_1825i_13.POW ? "^" : "//";
-            const iris_1825i_275 = this.read_reg(i_b(iris_1825i_37))
-                  const iris_1825i_383 = this.read_reg(i_c(iris_1825i_37))
-            const iris_1825i_384 = iris_1825i_30 === iris_1825i_13.POW ? 9 : (iris_1825i_30 === iris_1825i_13.MUL || iris_1825i_30 === iris_1825i_13.DIV || iris_1825i_30 === iris_1825i_13.MOD || iris_1825i_30 === iris_1825i_13.IDIV ? 7 : 6);
-						const iris_1825i_42 = this.bin(iris_1825i_382, iris_1825i_275, iris_1825i_383, iris_1825i_384, iris_1825i_30 === iris_1825i_13.POW);
-                        iris_1825i_42.ty = ty(1, 'number')
-            this.store_reg(iris_1825i_4, i_a(iris_1825i_37), iris_1825i_36, iris_1825i_42, false);
-						++iris_1825i_36; break
+					case Op.NOT:
+						this.store_reg(out, i_a(insn), pc, this.un('not', this.read_reg(i_b(insn))), false);
+            ++pc; break;
+                    case Op.MINUS:
+            this.store_reg(out, i_a(insn), pc, this.un('-', this.read_reg(i_b(insn))), false);
+            ++pc; break
+					case Op.LENGTH:
+                  this.store_reg(out, i_a(insn), pc, this.un('#', this.read_reg(i_b(insn))), false);
+						++pc; break;
+					case Op.ADD: case Op.SUB: case Op.MUL: case Op.DIV: case Op.MOD:
+          case Op.POW: case Op.IDIV: {
+                  const sym = op === Op.ADD ? '+' : op === Op.SUB ? "-" : op === Op.MUL ? "*" :
+              op === Op.DIV ? '/' : op === Op.MOD ? "%" : op === Op.POW ? "^" : "//";
+            const lhs = this.read_reg(i_b(insn))
+                  const rhs = this.read_reg(i_c(insn))
+            const prec = op === Op.POW ? 9 : (op === Op.MUL || op === Op.DIV || op === Op.MOD || op === Op.IDIV ? 7 : 6);
+						const v = this.bin(sym, lhs, rhs, prec, op === Op.POW);
+                        v.ty = ty(1, 'number')
+            this.store_reg(out, i_a(insn), pc, v, false);
+						++pc; break
           }
-               case iris_1825i_13.ADDK: case iris_1825i_13.SUBK: case iris_1825i_13.MULK: case iris_1825i_13.DIVK: case iris_1825i_13.MODK:
-               case iris_1825i_13.POWK: case iris_1825i_13.IDIVK: {
-                  const iris_1825i_382 = iris_1825i_30 === iris_1825i_13.ADDK ? "+" : iris_1825i_30 === iris_1825i_13.SUBK ? "-" : iris_1825i_30 === iris_1825i_13.MULK ? '*' :
-							iris_1825i_30 === iris_1825i_13.DIVK ? '/' : iris_1825i_30 === iris_1825i_13.MODK ? '%' : iris_1825i_30 === iris_1825i_13.POWK ? "^" : '//';
-						const iris_1825i_275 = this.read_reg(i_b(iris_1825i_37));
-						const iris_1825i_383 = this.leaf(this.const_from(i_c(iris_1825i_37)))
-            const iris_1825i_384 = iris_1825i_30 === iris_1825i_13.POWK ? 9 : (iris_1825i_30 === iris_1825i_13.MULK || iris_1825i_30 === iris_1825i_13.DIVK || iris_1825i_30 === iris_1825i_13.MODK || iris_1825i_30 === iris_1825i_13.IDIVK ? 7 : 6);
-            const iris_1825i_42 = this.bin(iris_1825i_382, iris_1825i_275, iris_1825i_383, iris_1825i_384, iris_1825i_30 === iris_1825i_13.POWK)
-            iris_1825i_42.ty = ty(1, "number")
-            this.store_reg(iris_1825i_4, i_a(iris_1825i_37), iris_1825i_36, iris_1825i_42, false);
-						++iris_1825i_36; break
+               case Op.ADDK: case Op.SUBK: case Op.MULK: case Op.DIVK: case Op.MODK:
+               case Op.POWK: case Op.IDIVK: {
+                  const sym = op === Op.ADDK ? "+" : op === Op.SUBK ? "-" : op === Op.MULK ? '*' :
+							op === Op.DIVK ? '/' : op === Op.MODK ? '%' : op === Op.POWK ? "^" : '//';
+						const lhs = this.read_reg(i_b(insn));
+						const rhs = this.leaf(this.const_from(i_c(insn)))
+            const prec = op === Op.POWK ? 9 : (op === Op.MULK || op === Op.DIVK || op === Op.MODK || op === Op.IDIVK ? 7 : 6);
+            const v = this.bin(sym, lhs, rhs, prec, op === Op.POWK)
+            v.ty = ty(1, "number")
+            this.store_reg(out, i_a(insn), pc, v, false);
+						++pc; break
 					}
-					case iris_1825i_13.SUBRK: case iris_1825i_13.DIVRK: {
-            const iris_1825i_382 = iris_1825i_30 === iris_1825i_13.SUBRK ? "-" : '/'
-                        const iris_1825i_275 = this.leaf(this.const_from(i_b(iris_1825i_37)));
-            const iris_1825i_383 = this.read_reg(i_c(iris_1825i_37));
-            const iris_1825i_42 = this.bin(iris_1825i_382, iris_1825i_275, iris_1825i_383, 6, false);
-            iris_1825i_42.ty = ty(1, 'number')
-            this.store_reg(iris_1825i_4, i_a(iris_1825i_37), iris_1825i_36, iris_1825i_42, false);
-            ++iris_1825i_36; break;
+					case Op.SUBRK: case Op.DIVRK: {
+            const sym = op === Op.SUBRK ? "-" : '/'
+                        const lhs = this.leaf(this.const_from(i_b(insn)));
+            const rhs = this.read_reg(i_c(insn));
+            const v = this.bin(sym, lhs, rhs, 6, false);
+            v.ty = ty(1, 'number')
+            this.store_reg(out, i_a(insn), pc, v, false);
+            ++pc; break;
                }
-					case iris_1825i_13.AND: case iris_1825i_13.OR: {
-                  const iris_1825i_275 = this.read_reg(i_b(iris_1825i_37));
-            const iris_1825i_383 = this.read_reg(i_c(iris_1825i_37));
-						const iris_1825i_42 = this.bin(iris_1825i_30 === iris_1825i_13.AND ? 'and' : 'or', iris_1825i_275, iris_1825i_383, iris_1825i_30 === iris_1825i_13.AND ? 2 : 1, false);
-            this.store_reg(iris_1825i_4, i_a(iris_1825i_37), iris_1825i_36, iris_1825i_42, false);
-                  ++iris_1825i_36; break
+					case Op.AND: case Op.OR: {
+                  const lhs = this.read_reg(i_b(insn));
+            const rhs = this.read_reg(i_c(insn));
+						const v = this.bin(op === Op.AND ? 'and' : 'or', lhs, rhs, op === Op.AND ? 2 : 1, false);
+            this.store_reg(out, i_a(insn), pc, v, false);
+                  ++pc; break
                     }
-               case iris_1825i_13.ANDK: case iris_1825i_13.ORK: {
-						const iris_1825i_275 = this.read_reg(i_b(iris_1825i_37))
-            const iris_1825i_383 = this.leaf(this.const_from(i_c(iris_1825i_37)));
-                  const iris_1825i_42 = this.bin(iris_1825i_30 === iris_1825i_13.ANDK ? 'and' : "or", iris_1825i_275, iris_1825i_383, iris_1825i_30 === iris_1825i_13.ANDK ? 2 : 1, false)
-                        this.store_reg(iris_1825i_4, i_a(iris_1825i_37), iris_1825i_36, iris_1825i_42, false);
-                  ++iris_1825i_36; break
+               case Op.ANDK: case Op.ORK: {
+						const lhs = this.read_reg(i_b(insn))
+            const rhs = this.leaf(this.const_from(i_c(insn)));
+                  const v = this.bin(op === Op.ANDK ? 'and' : "or", lhs, rhs, op === Op.ANDK ? 2 : 1, false)
+                        this.store_reg(out, i_a(insn), pc, v, false);
+                  ++pc; break
 					}
-					case iris_1825i_13.CONCAT: {
+					case Op.CONCAT: {
 						if (this.opt.interpolatedStrings) {
-							const iris_1825i_165 = []
-							for (let iris_1825i_54 = i_b(iris_1825i_37); iris_1825i_54 <= i_c(iris_1825i_37); iris_1825i_54++) iris_1825i_165.push(this.read_reg(iris_1825i_54));
-							const iris_1825i_163 = maybe_backtick(iris_1825i_165);
-							if (iris_1825i_163 !== null) {
-                                const iris_1825i_385 = this.leaf('`' + iris_1825i_163 + "`")
-                        iris_1825i_385.ty = ty(1, "string")
-                this.store_reg(iris_1825i_4, i_a(iris_1825i_37), iris_1825i_36, iris_1825i_385, false);
-                        ++iris_1825i_36;
+							const parts = []
+							for (let r = i_b(insn); r <= i_c(insn); r++) parts.push(this.read_reg(r));
+							const t = maybe_backtick(parts);
+							if (t !== null) {
+                                const lf = this.leaf('`' + t + "`")
+                        lf.ty = ty(1, "string")
+                this.store_reg(out, i_a(insn), pc, lf, false);
+                        ++pc;
 								break
               }
                   }
-						let iris_1825i_386 = this.read_reg(i_b(iris_1825i_37));
-            for (let iris_1825i_54 = i_b(iris_1825i_37) + 1; iris_1825i_54 <= i_c(iris_1825i_37); iris_1825i_54++) iris_1825i_386 = this.bin('..', iris_1825i_386, this.read_reg(iris_1825i_54), 5, true)
-            iris_1825i_386.ty = ty(1, 'string');
-						this.store_reg(iris_1825i_4, i_a(iris_1825i_37), iris_1825i_36, iris_1825i_386, false);
-            ++iris_1825i_36; break;
+						let acc = this.read_reg(i_b(insn));
+            for (let r = i_b(insn) + 1; r <= i_c(insn); r++) acc = this.bin('..', acc, this.read_reg(r), 5, true)
+            acc.ty = ty(1, 'string');
+						this.store_reg(out, i_a(insn), pc, acc, false);
+            ++pc; break;
                }
-               case iris_1825i_13.GETVARARGS: {
-            const iris_1825i_42 = make_expr(iris_1825i_158.Vararg)
-						iris_1825i_42.text = '...';
-            iris_1825i_42.multi = true
-            this.reg[i_a(iris_1825i_37)] = iris_1825i_42;
-            ++iris_1825i_36; break
+               case Op.GETVARARGS: {
+            const v = make_expr(ExprK.Vararg)
+						v.text = '...';
+            v.multi = true
+            this.reg[i_a(insn)] = v;
+            ++pc; break
                     }
-          case iris_1825i_13.FORNPREP: case iris_1825i_13.FORGPREP: case iris_1825i_13.FORGPREP_INEXT: case iris_1825i_13.FORGPREP_NEXT:
-          case iris_1825i_13.NEWCLASS: case iris_1825i_13.NEWCLASSMEMBER: case iris_1825i_13.CMPPROTO:
-            iris_1825i_36 += op_length(iris_1825i_30); break;
+          case Op.FORNPREP: case Op.FORGPREP: case Op.FORGPREP_INEXT: case Op.FORGPREP_NEXT:
+          case Op.NEWCLASS: case Op.NEWCLASSMEMBER: case Op.CMPPROTO:
+            pc += op_length(op); break;
 					default:
-            ++iris_1825i_36; break;
+            ++pc; break;
                 }
 			}
     } finally {
-			iris_1825i_230--
+			walkDepth--
     }
     }
 clone () {
-    const iris_1825i_67 = Object.create(iris_1825i_237.prototype);
-      iris_1825i_67.opt = this.opt;
-      iris_1825i_67.program = this.program
-    iris_1825i_67.proto = this.proto
-        iris_1825i_67.upvals = this.upvals;
-    iris_1825i_67.isMain = this.isMain;
-    iris_1825i_67.reg = this.reg.slice();
-        iris_1825i_67.regName = this.regName.slice();
-        iris_1825i_67.regDeclared = this.regDeclared.slice()
-		iris_1825i_67.regOrigin = this.regOrigin.slice();
-      iris_1825i_67.regTy = this.regTy.slice();
-		iris_1825i_67.methodInfo = this.methodInfo.slice();
-        iris_1825i_67.strConstOf = new Map(this.strConstOf);
-    iris_1825i_67.captured = this.captured.slice()
-      iris_1825i_67.liveOut = this.liveOut
-        iris_1825i_67.paramTy = this.paramTy
-    iris_1825i_67.paramUsed = this.paramUsed
-		iris_1825i_67.n = this.n;
-        iris_1825i_67.R = this.R;
-      iris_1825i_67.maxLocals = this.maxLocals;
-        iris_1825i_67.nextV = this.nextV
-    iris_1825i_67.tableCount = this.tableCount
-    iris_1825i_67.currentPc = this.currentPc
-		iris_1825i_67.inLoop = this.inLoop;
-    iris_1825i_67.lastRetTy = this.lastRetTy
-    iris_1825i_67.usedNames = new Set(this.usedNames);
-    iris_1825i_67.loops = this.loops;
-    return iris_1825i_67;
+    const c = Object.create(CompileState.prototype);
+      c.opt = this.opt;
+      c.program = this.program
+    c.proto = this.proto
+        c.upvals = this.upvals;
+    c.isMain = this.isMain;
+    c.reg = this.reg.slice();
+        c.regName = this.regName.slice();
+        c.regDeclared = this.regDeclared.slice()
+		c.regOrigin = this.regOrigin.slice();
+      c.regTy = this.regTy.slice();
+		c.methodInfo = this.methodInfo.slice();
+        c.strConstOf = new Map(this.strConstOf);
+    c.captured = this.captured.slice()
+      c.liveOut = this.liveOut
+        c.paramTy = this.paramTy
+    c.paramUsed = this.paramUsed
+		c.n = this.n;
+        c.R = this.R;
+      c.maxLocals = this.maxLocals;
+        c.nextV = this.nextV
+    c.tableCount = this.tableCount
+    c.currentPc = this.currentPc
+		c.inLoop = this.inLoop;
+    c.lastRetTy = this.lastRetTy
+    c.usedNames = new Set(this.usedNames);
+    c.loops = this.loops;
+    return c;
 	}
 }
 
 
-function hint_from_const (iris_1825i_67) {
-  switch (iris_1825i_67.kind) {
-        case iris_1825i_14.Number:
-      case iris_1825i_14.Integer: return ty(1, "number");
-    case iris_1825i_14.String: return ty(1, "string")
-    case iris_1825i_14.Boolean: return ty(1, 'boolean');
-		case iris_1825i_14.Vector:
-		case iris_1825i_14.VectorD: return ty(1, 'vector')
+function hint_from_const (c) {
+  switch (c.kind) {
+        case ConstK.Number:
+      case ConstK.Integer: return ty(1, "number");
+    case ConstK.String: return ty(1, "string")
+    case ConstK.Boolean: return ty(1, 'boolean');
+		case ConstK.Vector:
+		case ConstK.VectorD: return ty(1, 'vector')
         default: return null;
    }
 }
 
 function ann_level () {
-  switch (iris_1825i_145.typeAnnotations) {
+  switch (OPT.typeAnnotations) {
     case "off": return 0
     case "functions": return 1;
       case "default": return 2
@@ -3032,794 +3035,794 @@ function ann_level () {
 }
 
 
-function ann_type(iris_1825i_163) {
-  if (!iris_1825i_163 || !iris_1825i_163.name) return '';
-   switch (iris_1825i_163.name) {
+function ann_type(t) {
+  if (!t || !t.name) return '';
+   switch (t.name) {
       case 'table': return '{}'
-    case 'function': case 'Enum': case 'vector': return iris_1825i_163.name;
-    default: return iris_1825i_163.name
+    case 'function': case 'Enum': case 'vector': return t.name;
+    default: return t.name
 	}
 }
 
-function typed_local(iris_1825i_118, iris_1825i_163) {
-	const iris_1825i_391 = ann_level();
-    if (iris_1825i_391 < 2 || !iris_1825i_163 || !iris_1825i_163.name) return "local " + iris_1825i_118;
-  const iris_1825i_238 = ann_type(iris_1825i_163);
-  if (!iris_1825i_238) return "local " + iris_1825i_118;
-	if (iris_1825i_163.tier === 2 && iris_1825i_391 < 3) return 'local ' + iris_1825i_118;
-   return 'local ' + iris_1825i_118 + ': ' + iris_1825i_238;
+function typed_local(name, t) {
+	const level = ann_level();
+    if (level < 2 || !t || !t.name) return "local " + name;
+  const nm = ann_type(t);
+  if (!nm) return "local " + name;
+	if (t.tier === 2 && level < 3) return 'local ' + name;
+   return 'local ' + name + ': ' + nm;
 }
 
-function build_body (iris_1825i_127, iris_1825i_58, iris_1825i_393, iris_1825i_394) {
-  const iris_1825i_395 = new iris_1825i_237(iris_1825i_127, iris_1825i_58, iris_1825i_393, iris_1825i_394);
-   const iris_1825i_4 = new iris_1825i_236();
-  iris_1825i_4.indent = 0;
-    iris_1825i_395.walk(iris_1825i_4, 0, iris_1825i_58.code.length, -1, false)
+function build_body (program, proto, upvals, isMainChunk) {
+  const st = new CompileState(program, proto, upvals, isMainChunk);
+   const out = new Sink();
+  out.indent = 0;
+    st.walk(out, 0, proto.code.length, -1, false)
 
-    const iris_1825i_303 = { header: '', comment: '', body: iris_1825i_4, upvalues: iris_1825i_393, selfRef: false }
-	let iris_1825i_310 = ''
-	const iris_1825i_391 = ann_level()
-  const iris_1825i_396 = iris_1825i_145.typeAnnotations !== "off"
-  for (let iris_1825i_54 = 0; iris_1825i_54 < iris_1825i_58.numparams; iris_1825i_54++) {
-    if (iris_1825i_54) iris_1825i_310 += ", "
-      let iris_1825i_238 = iris_1825i_395.regName[iris_1825i_54]
-      if (iris_1825i_238.length === 0) iris_1825i_238 = iris_1825i_395.locv_name(iris_1825i_54, 0);
-    let iris_1825i_397 = iris_1825i_395.paramTy[iris_1825i_54]
-      if (iris_1825i_238.length === 0 && !iris_1825i_395.paramUsed[iris_1825i_54]) {
+    const cr = { header: '', comment: '', body: out, upvalues: upvals, selfRef: false }
+	let params = ''
+	const level = ann_level()
+  const sigAnn = OPT.typeAnnotations !== "off"
+  for (let r = 0; r < proto.numparams; r++) {
+    if (r) params += ", "
+      let nm = st.regName[r]
+      if (nm.length === 0) nm = st.locv_name(r, 0);
+    let pty = st.paramTy[r]
+      if (nm.length === 0 && !st.paramUsed[r]) {
 
 
-            if (!iris_1825i_145.discardNames || iris_1825i_145.discardNames === "bare") iris_1825i_238 = "_";
-            else iris_1825i_238 = iris_1825i_395.throwaway(iris_1825i_397 ? iris_1825i_397.name : null)
+            if (!OPT.discardNames || OPT.discardNames === "bare") nm = "_";
+            else nm = st.throwaway(pty ? pty.name : null)
 		}
-      if (iris_1825i_238.length === 0) {
-         iris_1825i_238 = iris_1825i_395.fresh_name('argument', iris_1825i_397 ? iris_1825i_397.name : null);
+      if (nm.length === 0) {
+         nm = st.fresh_name('argument', pty ? pty.name : null);
     }
-    if (iris_1825i_396 && iris_1825i_391 >= 1 && iris_1825i_397) {
-			const iris_1825i_398 = ann_type(iris_1825i_397);
-      if (iris_1825i_398) iris_1825i_310 += iris_1825i_238 + ': ' + iris_1825i_398;
-      else iris_1825i_310 += iris_1825i_238;
+    if (sigAnn && level >= 1 && pty) {
+			const annName = ann_type(pty);
+      if (annName) params += nm + ': ' + annName;
+      else params += nm;
 		} else {
-         iris_1825i_310 += iris_1825i_238;
+         params += nm;
     }
-		iris_1825i_395.usedNames.add(iris_1825i_238);
+		st.usedNames.add(nm);
   }
-  let iris_1825i_399 = iris_1825i_58.debugname;
-  if (iris_1825i_399.length > 0 && iris_1825i_399[0] === '(') iris_1825i_399 = ''
-	let iris_1825i_400 = "";
-	if (iris_1825i_396 && iris_1825i_391 >= 1 && iris_1825i_395.lastRetTy) {
-        const iris_1825i_401 = ann_type(iris_1825i_395.lastRetTy);
-		if (iris_1825i_401) iris_1825i_400 = ": " + iris_1825i_401
+  let fname = proto.debugname;
+  if (fname.length > 0 && fname[0] === '(') fname = ''
+	let retAnn = "";
+	if (sigAnn && level >= 1 && st.lastRetTy) {
+        const rn = ann_type(st.lastRetTy);
+		if (rn) retAnn = ": " + rn
 	}
-   iris_1825i_303.header = iris_1825i_399.length === 0 ? "function(" + iris_1825i_310 + ')' + iris_1825i_400
-        : 'function ' + iris_1825i_399 + '(' + iris_1825i_310 + ")" + iris_1825i_400
-  return iris_1825i_303;
+   cr.header = fname.length === 0 ? "function(" + params + ')' + retAnn
+        : 'function ' + fname + '(' + params + ")" + retAnn
+  return cr;
 }
 
-function kill_dead_vars(iris_1825i_239) {
-   const iris_1825i_403 = iris_1825i_239.split("\n")
-    const iris_1825i_404 = (iris_1825i_67) => /[A-Za-z0-9_]/.test(iris_1825i_67);
-  const iris_1825i_405 = (iris_1825i_46) => iris_1825i_46.replace(/^\t+/, '')
-  let iris_1825i_406 = true
-	while (iris_1825i_406) {
-		iris_1825i_406 = false
-    for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_403.length; iris_1825i_5++) {
-         const iris_1825i_163 = iris_1825i_405(iris_1825i_403[iris_1825i_5]);
-         if (!iris_1825i_163.startsWith('local ')) continue
-      let iris_1825i_407 = 6;
-      if (iris_1825i_407 >= iris_1825i_163.length || (!/[A-Za-z_]/.test(iris_1825i_163[iris_1825i_407]))) continue
-			let iris_1825i_408 = iris_1825i_407
-			while (iris_1825i_408 < iris_1825i_163.length && iris_1825i_404(iris_1825i_163[iris_1825i_408])) iris_1825i_408++
-			const iris_1825i_340 = iris_1825i_163.slice(iris_1825i_407, iris_1825i_408);
+function kill_dead_vars(src) {
+   const lines = src.split("\n")
+    const is_word_char = (c) => /[A-Za-z0-9_]/.test(c);
+  const trim = (s) => s.replace(/^\t+/, '')
+  let changed = true
+	while (changed) {
+		changed = false
+    for (let i = 0; i < lines.length; i++) {
+         const t = trim(lines[i]);
+         if (!t.startsWith('local ')) continue
+      let nameStart = 6;
+      if (nameStart >= t.length || (!/[A-Za-z_]/.test(t[nameStart]))) continue
+			let nameEnd = nameStart
+			while (nameEnd < t.length && is_word_char(t[nameEnd])) nameEnd++
+			const var_name = t.slice(nameStart, nameEnd);
 
 
-            if (iris_1825i_340.charAt(0) === "_") continue
-         const iris_1825i_409 = ['and', 'break', 'do', "else", 'elseif', "end", "false", 'for', "function", 'if',
+            if (var_name.charAt(0) === "_") continue
+         const kws = ['and', 'break', 'do', "else", 'elseif', "end", "false", 'for', "function", 'if',
                 'in', "local", "nil", 'not', "or", "repeat", 'return', 'then', 'true', "until", "while", 'continue']
-			if (iris_1825i_409.includes(iris_1825i_340)) continue
-      if (!iris_1825i_163.includes('=')) continue;
-			if (iris_1825i_163.endsWith("{")) continue;
-            let iris_1825i_410 = false
-			for (let iris_1825i_69 = iris_1825i_5 + 1; iris_1825i_69 < iris_1825i_403.length; iris_1825i_69++) {
-            const iris_1825i_411 = iris_1825i_405(iris_1825i_403[iris_1825i_69]);
-        let iris_1825i_55 = 0;
-        while (iris_1825i_55 < iris_1825i_411.length) {
-                    if (iris_1825i_411[iris_1825i_55] === '"' || iris_1825i_411[iris_1825i_55] === "'") {
-                        const iris_1825i_171 = iris_1825i_411[iris_1825i_55++]
-                  while (iris_1825i_55 < iris_1825i_411.length && iris_1825i_411[iris_1825i_55] !== iris_1825i_171) { if (iris_1825i_411[iris_1825i_55] === "\\") iris_1825i_55++; iris_1825i_55++ }
-            if (iris_1825i_55 < iris_1825i_411.length) iris_1825i_55++
+			if (kws.includes(var_name)) continue
+      if (!t.includes('=')) continue;
+			if (t.endsWith("{")) continue;
+            let used = false
+			for (let j = i + 1; j < lines.length; j++) {
+            const tj = trim(lines[j]);
+        let p = 0;
+        while (p < tj.length) {
+                    if (tj[p] === '"' || tj[p] === "'") {
+                        const q = tj[p++]
+                  while (p < tj.length && tj[p] !== q) { if (tj[p] === "\\") p++; p++ }
+            if (p < tj.length) p++
 						continue;
 					}
-                    if (iris_1825i_411[iris_1825i_55] === '-' && iris_1825i_55 + 1 < iris_1825i_411.length && iris_1825i_411[iris_1825i_55 + 1] === '-') break;
-          if (/[A-Za-z_]/.test(iris_1825i_411[iris_1825i_55])) {
-            const iris_1825i_412 = iris_1825i_55
-						while (iris_1825i_55 < iris_1825i_411.length && iris_1825i_404(iris_1825i_411[iris_1825i_55])) iris_1825i_55++
-                  if (iris_1825i_411.slice(iris_1825i_412, iris_1825i_55) === iris_1825i_340) { iris_1825i_410 = true; break }
-          } else iris_1825i_55++
+                    if (tj[p] === '-' && p + 1 < tj.length && tj[p + 1] === '-') break;
+          if (/[A-Za-z_]/.test(tj[p])) {
+            const ws = p
+						while (p < tj.length && is_word_char(tj[p])) p++
+                  if (tj.slice(ws, p) === var_name) { used = true; break }
+          } else p++
         }
-                if (iris_1825i_410) break;
+                if (used) break;
       }
-      if (!iris_1825i_410) { iris_1825i_403.splice(iris_1825i_5, 1); iris_1825i_5--; iris_1825i_406 = true }
+      if (!used) { lines.splice(i, 1); i--; changed = true }
       }
   }
-	return iris_1825i_403.join("\n");
+	return lines.join("\n");
 }
 
-function fold_arith(iris_1825i_239) {
-   let iris_1825i_414 = iris_1825i_239
-  const iris_1825i_415 = (iris_1825i_416, iris_1825i_30) => {
-		let iris_1825i_406 = true
-    let iris_1825i_417 = 200
-      while (iris_1825i_406 && iris_1825i_417-- > 0) {
-			iris_1825i_406 = false;
-			let iris_1825i_418 = 0;
-         while (iris_1825i_418 < iris_1825i_414.length) {
-            const iris_1825i_97 = iris_1825i_414.indexOf(iris_1825i_416, iris_1825i_418)
-                if (iris_1825i_97 === -1) break;
-            let iris_1825i_419 = iris_1825i_97 + iris_1825i_416.length
-        let iris_1825i_82 = 1;
-            while (iris_1825i_419 + iris_1825i_416.length <= iris_1825i_414.length && iris_1825i_414.slice(iris_1825i_419, iris_1825i_419 + iris_1825i_416.length) === iris_1825i_416) {
-          iris_1825i_82++; iris_1825i_419 += iris_1825i_416.length
+function fold_arith(src) {
+   let result = src
+  const fold_pair = (needle, op) => {
+		let changed = true
+    let maxPasses = 200
+      while (changed && maxPasses-- > 0) {
+			changed = false;
+			let pos = 0;
+         while (pos < result.length) {
+            const start = result.indexOf(needle, pos)
+                if (start === -1) break;
+            let scan = start + needle.length
+        let count = 1;
+            while (scan + needle.length <= result.length && result.slice(scan, scan + needle.length) === needle) {
+          count++; scan += needle.length
                 }
-                if (iris_1825i_82 >= 2) {
-          iris_1825i_414 = iris_1825i_414.slice(0, iris_1825i_97) + ' ' + iris_1825i_30 + " " + iris_1825i_82 + iris_1825i_414.slice(iris_1825i_419);
-          iris_1825i_406 = true;
-                } else iris_1825i_418 = iris_1825i_97 + iris_1825i_416.length
+                if (count >= 2) {
+          result = result.slice(0, start) + ' ' + op + " " + count + result.slice(scan);
+          changed = true;
+                } else pos = start + needle.length
 			}
 		}
   }
-    iris_1825i_415(" + 1", '+');
-  iris_1825i_415(" - 1", '-');
+    fold_pair(" + 1", '+');
+  fold_pair(" - 1", '-');
 
-    let iris_1825i_406 = true
-	let iris_1825i_417 = 100;
-  while (iris_1825i_406 && iris_1825i_417-- > 0) {
-    iris_1825i_406 = false;
-        const iris_1825i_97 = iris_1825i_414.indexOf(' * 1');
-        if (iris_1825i_97 !== -1) { iris_1825i_414 = iris_1825i_414.slice(0, iris_1825i_97) + iris_1825i_414.slice(iris_1825i_97 + 4); iris_1825i_406 = true }
+    let changed = true
+	let maxPasses = 100;
+  while (changed && maxPasses-- > 0) {
+    changed = false;
+        const start = result.indexOf(' * 1');
+        if (start !== -1) { result = result.slice(0, start) + result.slice(start + 4); changed = true }
   }
 
 
-  let iris_1825i_8 = true, iris_1825i_420 = 100
-  while (iris_1825i_8 && iris_1825i_420-- > 0) {
-    iris_1825i_8 = false;
-		let iris_1825i_421 = iris_1825i_414.replace(/\s*[+-]\s*0(?![0-9.])/g, '')
-    if (iris_1825i_421 !== iris_1825i_414) { iris_1825i_414 = iris_1825i_421; iris_1825i_8 = true }
+  let c2 = true, mp2 = 100
+  while (c2 && mp2-- > 0) {
+    c2 = false;
+		let m2 = result.replace(/\s*[+-]\s*0(?![0-9.])/g, '')
+    if (m2 !== result) { result = m2; c2 = true }
 	}
 
-  iris_1825i_406 = true; iris_1825i_417 = 100;
-	while (iris_1825i_406 && iris_1825i_417-- > 0) {
-    iris_1825i_406 = false
-      let iris_1825i_418 = 0
-		while (iris_1825i_418 < iris_1825i_414.length) {
-			const iris_1825i_422 = (iris_1825i_67) => iris_1825i_67 >= "0" && iris_1825i_67 <= '9';
-      let iris_1825i_423 = iris_1825i_418
-         while (iris_1825i_423 < iris_1825i_414.length && !iris_1825i_422(iris_1825i_414[iris_1825i_423])) iris_1825i_423++
-         if (iris_1825i_423 >= iris_1825i_414.length) break;
-			let iris_1825i_424 = iris_1825i_423
-         while (iris_1825i_424 < iris_1825i_414.length && iris_1825i_422(iris_1825i_414[iris_1825i_424])) iris_1825i_424++
-         if (iris_1825i_424 === iris_1825i_423 || iris_1825i_424 >= iris_1825i_414.length) { iris_1825i_418 = iris_1825i_424 + 1; continue }
-      let iris_1825i_425 = iris_1825i_424;
-      while (iris_1825i_425 < iris_1825i_414.length && iris_1825i_414[iris_1825i_425] === " ") iris_1825i_425++
-			if (iris_1825i_425 >= iris_1825i_414.length) { iris_1825i_418 = iris_1825i_424 + 1; continue }
-         const iris_1825i_30 = iris_1825i_414[iris_1825i_425]
-            if (iris_1825i_30 !== '+' && iris_1825i_30 !== "-" && iris_1825i_30 !== "*") { iris_1825i_418 = iris_1825i_424 + 1; continue }
-      let iris_1825i_426 = iris_1825i_425 + 1
-         while (iris_1825i_426 < iris_1825i_414.length && iris_1825i_414[iris_1825i_426] === ' ') iris_1825i_426++
-      if (iris_1825i_426 >= iris_1825i_414.length || !iris_1825i_422(iris_1825i_414[iris_1825i_426])) { iris_1825i_418 = iris_1825i_424 + 1; continue }
-         let iris_1825i_427 = iris_1825i_426
-            while (iris_1825i_427 < iris_1825i_414.length && iris_1825i_422(iris_1825i_414[iris_1825i_427])) iris_1825i_427++
-         if (iris_1825i_427 === iris_1825i_426) { iris_1825i_418 = iris_1825i_427; continue }
-            const iris_1825i_428 = (iris_1825i_427 < iris_1825i_414.length) ? iris_1825i_414[iris_1825i_427] : 0
-			if (iris_1825i_428 !== 0 && iris_1825i_428 !== ' ' && iris_1825i_428 !== ')' && iris_1825i_428 !== "]" && iris_1825i_428 !== ',' &&
-        iris_1825i_428 !== ";" && iris_1825i_428 !== "\n" && iris_1825i_428 !== "\r") { iris_1825i_418 = iris_1825i_427; continue }
-			const iris_1825i_429 = parseInt(iris_1825i_414.slice(iris_1825i_423, iris_1825i_424), 10)
-         const iris_1825i_430 = parseInt(iris_1825i_414.slice(iris_1825i_426, iris_1825i_427), 10);
-      const iris_1825i_431 = iris_1825i_30 === "+" ? iris_1825i_429 + iris_1825i_430 : iris_1825i_30 === "-" ? iris_1825i_429 - iris_1825i_430 : iris_1825i_429 * iris_1825i_430
-         iris_1825i_414 = iris_1825i_414.slice(0, iris_1825i_423) + String(iris_1825i_431) + iris_1825i_414.slice(iris_1825i_427);
-         iris_1825i_406 = true
-			iris_1825i_418 = iris_1825i_423 + String(iris_1825i_431).length;
+  changed = true; maxPasses = 100;
+	while (changed && maxPasses-- > 0) {
+    changed = false
+      let pos = 0
+		while (pos < result.length) {
+			const is_digit = (c) => c >= "0" && c <= '9';
+      let n1s = pos
+         while (n1s < result.length && !is_digit(result[n1s])) n1s++
+         if (n1s >= result.length) break;
+			let n1e = n1s
+         while (n1e < result.length && is_digit(result[n1e])) n1e++
+         if (n1e === n1s || n1e >= result.length) { pos = n1e + 1; continue }
+      let opPos = n1e;
+      while (opPos < result.length && result[opPos] === " ") opPos++
+			if (opPos >= result.length) { pos = n1e + 1; continue }
+         const op = result[opPos]
+            if (op !== '+' && op !== "-" && op !== "*") { pos = n1e + 1; continue }
+      let n2s = opPos + 1
+         while (n2s < result.length && result[n2s] === ' ') n2s++
+      if (n2s >= result.length || !is_digit(result[n2s])) { pos = n1e + 1; continue }
+         let n2e = n2s
+            while (n2e < result.length && is_digit(result[n2e])) n2e++
+         if (n2e === n2s) { pos = n2e; continue }
+            const after = (n2e < result.length) ? result[n2e] : 0
+			if (after !== 0 && after !== ' ' && after !== ')' && after !== "]" && after !== ',' &&
+        after !== ";" && after !== "\n" && after !== "\r") { pos = n2e; continue }
+			const v1 = parseInt(result.slice(n1s, n1e), 10)
+         const v2 = parseInt(result.slice(n2s, n2e), 10);
+      const rv = op === "+" ? v1 + v2 : op === "-" ? v1 - v2 : v1 * v2
+         result = result.slice(0, n1s) + String(rv) + result.slice(n2e);
+         changed = true
+			pos = n1s + String(rv).length;
     }
     }
-    return iris_1825i_414;
+    return result;
 }
 
-function drop_trailing_return (iris_1825i_239) {
-  const iris_1825i_403 = iris_1825i_239.split("\n");
-	const iris_1825i_405 = (iris_1825i_46) => iris_1825i_46.replace(/^\t+/, "")
-  for (let iris_1825i_5 = iris_1825i_403.length - 1; iris_1825i_5 >= 0; iris_1825i_5--) {
-		const iris_1825i_163 = iris_1825i_405(iris_1825i_403[iris_1825i_5])
-    if (iris_1825i_163 === 'return') {
-         if (iris_1825i_5 > 0) {
-				const iris_1825i_433 = iris_1825i_405(iris_1825i_403[iris_1825i_5 - 1])
-        if (iris_1825i_433.startsWith("function ") || iris_1825i_433.startsWith("local function ")) continue
-        if (iris_1825i_433.length > 0 && iris_1825i_433 !== 'end') { iris_1825i_403.splice(iris_1825i_5, 1); iris_1825i_5--; continue }
+function drop_trailing_return (src) {
+  const lines = src.split("\n");
+	const trim = (s) => s.replace(/^\t+/, "")
+  for (let i = lines.length - 1; i >= 0; i--) {
+		const t = trim(lines[i])
+    if (t === 'return') {
+         if (i > 0) {
+				const prev = trim(lines[i - 1])
+        if (prev.startsWith("function ") || prev.startsWith("local function ")) continue
+        if (prev.length > 0 && prev !== 'end') { lines.splice(i, 1); i--; continue }
       }
     }
     }
-	return iris_1825i_403.join("\n")
+	return lines.join("\n")
 }
 
-function squash_if_true (iris_1825i_239) {
-	const iris_1825i_403 = iris_1825i_239.split("\n")
-  const iris_1825i_405 = (iris_1825i_46) => iris_1825i_46.replace(/^\t+/, '');
-  for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_403.length; iris_1825i_5++) {
-		const iris_1825i_163 = iris_1825i_405(iris_1825i_403[iris_1825i_5])
-    if (iris_1825i_163 === 'if true then') {
-            let iris_1825i_435 = 0
-         while (iris_1825i_435 < iris_1825i_403[iris_1825i_5].length && iris_1825i_403[iris_1825i_5][iris_1825i_435] === "\t") iris_1825i_435++
-      let iris_1825i_436 = -1;
-         let iris_1825i_437 = 1
-      for (let iris_1825i_69 = iris_1825i_5 + 1; iris_1825i_69 < iris_1825i_403.length; iris_1825i_69++) {
-				const iris_1825i_411 = iris_1825i_405(iris_1825i_403[iris_1825i_69])
-                let iris_1825i_438 = 0;
-            while (iris_1825i_438 < iris_1825i_403[iris_1825i_69].length && iris_1825i_403[iris_1825i_69][iris_1825i_438] === "\t") iris_1825i_438++
-        if (iris_1825i_438 === iris_1825i_435 && iris_1825i_411.length >= 3 && iris_1825i_411.slice(0, 3) === "end") {
-					iris_1825i_437--
-          if (iris_1825i_437 === 0) { iris_1825i_436 = iris_1825i_69; break }
+function squash_if_true (src) {
+	const lines = src.split("\n")
+  const trim = (s) => s.replace(/^\t+/, '');
+  for (let i = 0; i < lines.length; i++) {
+		const t = trim(lines[i])
+    if (t === 'if true then') {
+            let indent = 0
+         while (indent < lines[i].length && lines[i][indent] === "\t") indent++
+      let endIdx = -1;
+         let depth = 1
+      for (let j = i + 1; j < lines.length; j++) {
+				const tj = trim(lines[j])
+                let tjIndent = 0;
+            while (tjIndent < lines[j].length && lines[j][tjIndent] === "\t") tjIndent++
+        if (tjIndent === indent && tj.length >= 3 && tj.slice(0, 3) === "end") {
+					depth--
+          if (depth === 0) { endIdx = j; break }
             }
-            if (iris_1825i_438 === iris_1825i_435 && (iris_1825i_411.startsWith('if ') || iris_1825i_411.startsWith("for ") ||
-          iris_1825i_411.startsWith('while ') || iris_1825i_411.startsWith('function '))) iris_1825i_437++
+            if (tjIndent === indent && (tj.startsWith('if ') || tj.startsWith("for ") ||
+          tj.startsWith('while ') || tj.startsWith('function '))) depth++
          }
-      if (iris_1825i_436 > 0) {
-				iris_1825i_403.splice(iris_1825i_436, 1)
-				iris_1825i_403.splice(iris_1825i_5, 1);
-        for (let iris_1825i_69 = iris_1825i_5; iris_1825i_69 < iris_1825i_436 - 1; iris_1825i_69++) {
-          if (iris_1825i_403[iris_1825i_69].length > 0 && iris_1825i_403[iris_1825i_69][0] === "\t") iris_1825i_403[iris_1825i_69] = iris_1825i_403[iris_1825i_69].slice(1);
+      if (endIdx > 0) {
+				lines.splice(endIdx, 1)
+				lines.splice(i, 1);
+        for (let j = i; j < endIdx - 1; j++) {
+          if (lines[j].length > 0 && lines[j][0] === "\t") lines[j] = lines[j].slice(1);
         }
-                iris_1825i_5--
+                i--
       }
     }
   }
-    return iris_1825i_403.join("\n");
+    return lines.join("\n");
 }
 
 
-function drop_empty_ifs (iris_1825i_239) {
-	let iris_1825i_414 = iris_1825i_239
-    let iris_1825i_406 = true
-   while (iris_1825i_406) {
-        iris_1825i_406 = false
-		const iris_1825i_403 = iris_1825i_414.split("\n");
-		for (let iris_1825i_5 = 0; iris_1825i_5 + 1 < iris_1825i_403.length; iris_1825i_5++) {
-      const iris_1825i_440 = iris_1825i_403[iris_1825i_5].trim();
-         if (iris_1825i_440.slice(0, 3) !== "if ") continue
-			if (iris_1825i_440.length < 5 || iris_1825i_440.slice(iris_1825i_440.length - 5) !== ' then') continue;
-      const iris_1825i_362 = iris_1825i_403[iris_1825i_5 + 1].trim();
-      if (iris_1825i_362 !== 'end') continue;
-            iris_1825i_403.splice(iris_1825i_5, 2)
-			iris_1825i_406 = true;
+function drop_empty_ifs (src) {
+	let result = src
+    let changed = true
+   while (changed) {
+        changed = false
+		const lines = result.split("\n");
+		for (let i = 0; i + 1 < lines.length; i++) {
+      const trimmed = lines[i].trim();
+         if (trimmed.slice(0, 3) !== "if ") continue
+			if (trimmed.length < 5 || trimmed.slice(trimmed.length - 5) !== ' then') continue;
+      const next = lines[i + 1].trim();
+      if (next !== 'end') continue;
+            lines.splice(i, 2)
+			changed = true;
 			break
         }
-        iris_1825i_414 = iris_1825i_403.join("\n")
+        result = lines.join("\n")
   }
-  return iris_1825i_414
+  return result
 }
 
-function merge_ifs (iris_1825i_239) {
-  const iris_1825i_403 = iris_1825i_239.split("\n")
-  const iris_1825i_405 = (iris_1825i_46) => iris_1825i_46.trim();
-	const iris_1825i_442 = (iris_1825i_46) => { let iris_1825i_67 = 0; while (iris_1825i_67 < iris_1825i_46.length && iris_1825i_46[iris_1825i_67] === "\t") iris_1825i_67++; return iris_1825i_67 }
-  let iris_1825i_406 = true;
-	while (iris_1825i_406) {
-		iris_1825i_406 = false;
-        for (let iris_1825i_5 = 0; iris_1825i_5 + 3 < iris_1825i_403.length; iris_1825i_5++) {
-			const iris_1825i_443 = iris_1825i_405(iris_1825i_403[iris_1825i_5])
-      if (iris_1825i_443.slice(0, 3) !== 'if ' || iris_1825i_443.length < 4 || iris_1825i_443.slice(iris_1825i_443.length - 4) !== ' then') continue
-         const iris_1825i_444 = iris_1825i_442(iris_1825i_403[iris_1825i_5])
-         const iris_1825i_445 = iris_1825i_405(iris_1825i_403[iris_1825i_5 + 1])
-      if (iris_1825i_445.slice(0, 3) !== 'if ' || iris_1825i_445.length < 4 || iris_1825i_445.slice(iris_1825i_445.length - 4) !== " then") continue
-      const iris_1825i_446 = iris_1825i_442(iris_1825i_403[iris_1825i_5 + 1]);
-      if (iris_1825i_446 !== iris_1825i_444 + 1) continue
-			let iris_1825i_447 = true
-      for (let iris_1825i_69 = iris_1825i_5 + 2; iris_1825i_69 < iris_1825i_403.length; iris_1825i_69++) {
-        const iris_1825i_411 = iris_1825i_405(iris_1825i_403[iris_1825i_69]);
-        const iris_1825i_448 = iris_1825i_442(iris_1825i_403[iris_1825i_69])
-            if (iris_1825i_448 === iris_1825i_444 && iris_1825i_411 === 'end') break;
-        if (iris_1825i_448 < iris_1825i_444) { iris_1825i_447 = false; break }
-				if (iris_1825i_448 === iris_1825i_444 + 1 && iris_1825i_411 !== "end") { iris_1825i_447 = false; break }
+function merge_ifs (src) {
+  const lines = src.split("\n")
+  const trim = (s) => s.trim();
+	const count_tabs = (s) => { let c = 0; while (c < s.length && s[c] === "\t") c++; return c }
+  let changed = true;
+	while (changed) {
+		changed = false;
+        for (let i = 0; i + 3 < lines.length; i++) {
+			const t1 = trim(lines[i])
+      if (t1.slice(0, 3) !== 'if ' || t1.length < 4 || t1.slice(t1.length - 4) !== ' then') continue
+         const tabs1 = count_tabs(lines[i])
+         const t2 = trim(lines[i + 1])
+      if (t2.slice(0, 3) !== 'if ' || t2.length < 4 || t2.slice(t2.length - 4) !== " then") continue
+      const tabs2 = count_tabs(lines[i + 1]);
+      if (tabs2 !== tabs1 + 1) continue
+			let foundOnlyIf = true
+      for (let j = i + 2; j < lines.length; j++) {
+        const tj = trim(lines[j]);
+        const tabsj = count_tabs(lines[j])
+            if (tabsj === tabs1 && tj === 'end') break;
+        if (tabsj < tabs1) { foundOnlyIf = false; break }
+				if (tabsj === tabs1 + 1 && tj !== "end") { foundOnlyIf = false; break }
       }
-			if (!iris_1825i_447) continue;
-         const iris_1825i_449 = iris_1825i_443.slice(3, iris_1825i_443.length - 7);
-      const iris_1825i_450 = iris_1825i_445.slice(3, iris_1825i_445.length - 7)
-      const iris_1825i_451 = "\t".repeat(iris_1825i_444)
-			iris_1825i_403[iris_1825i_5] = iris_1825i_451 + 'if ' + iris_1825i_449 + " and " + iris_1825i_450 + ' then'
-      iris_1825i_403.splice(iris_1825i_5 + 1, 1);
-            for (let iris_1825i_69 = iris_1825i_5 + 1; iris_1825i_69 < iris_1825i_403.length; iris_1825i_69++) {
-                if (iris_1825i_405(iris_1825i_403[iris_1825i_69]) === 'end' && iris_1825i_442(iris_1825i_403[iris_1825i_69]) === iris_1825i_444) {
-					iris_1825i_403.splice(iris_1825i_69, 1)
+			if (!foundOnlyIf) continue;
+         const cond1 = t1.slice(3, t1.length - 7);
+      const cond2 = t2.slice(3, t2.length - 7)
+      const indentStr = "\t".repeat(tabs1)
+			lines[i] = indentStr + 'if ' + cond1 + " and " + cond2 + ' then'
+      lines.splice(i + 1, 1);
+            for (let j = i + 1; j < lines.length; j++) {
+                if (trim(lines[j]) === 'end' && count_tabs(lines[j]) === tabs1) {
+					lines.splice(j, 1)
 					break
 				}
       }
-      iris_1825i_406 = true
+      changed = true
             break
     }
    }
-  return iris_1825i_403.join("\n");
+  return lines.join("\n");
 }
 
-function to_lines(iris_1825i_239) {
-  const iris_1825i_403 = []
-  let iris_1825i_97 = 0;
-	while (iris_1825i_97 < iris_1825i_239.length) {
-        const iris_1825i_453 = iris_1825i_239.indexOf("\n", iris_1825i_97)
-		if (iris_1825i_453 === -1) { iris_1825i_403.push(iris_1825i_239.slice(iris_1825i_97)); break }
-		let iris_1825i_130 = iris_1825i_239.slice(iris_1825i_97, iris_1825i_453);
-        if (iris_1825i_130.length > 0 && iris_1825i_130.charCodeAt(iris_1825i_130.length - 1) === 13) iris_1825i_130 = iris_1825i_130.slice(0, -1);
-		iris_1825i_403.push(iris_1825i_130);
-    iris_1825i_97 = iris_1825i_453 + 1
+function to_lines(src) {
+  const lines = []
+  let start = 0;
+	while (start < src.length) {
+        const nl = src.indexOf("\n", start)
+		if (nl === -1) { lines.push(src.slice(start)); break }
+		let line = src.slice(start, nl);
+        if (line.length > 0 && line.charCodeAt(line.length - 1) === 13) line = line.slice(0, -1);
+		lines.push(line);
+    start = nl + 1
    }
-	return iris_1825i_403
+	return lines
 }
 
-function pick_weighted (iris_1825i_239) {
-   const iris_1825i_403 = to_lines(iris_1825i_239)
-	const iris_1825i_405 = (iris_1825i_46) => iris_1825i_46.replace(/^[ \t]+/, '').replace(/[ \t]+$/, "");
-  const iris_1825i_455 = new Array(iris_1825i_403.length).fill(false)
-  const iris_1825i_456 = (iris_1825i_46) => iris_1825i_46.length >= 3 && iris_1825i_46.slice(-3) === " do"
+function pick_weighted (src) {
+   const lines = to_lines(src)
+	const trim = (s) => s.replace(/^[ \t]+/, '').replace(/[ \t]+$/, "");
+  const removed = new Array(lines.length).fill(false)
+  const ends_with_do = (s) => s.length >= 3 && s.slice(-3) === " do"
 
-  for (let iris_1825i_5 = 0; iris_1825i_5 + 1 < iris_1825i_403.length; iris_1825i_5++) {
-      const iris_1825i_163 = iris_1825i_405(iris_1825i_403[iris_1825i_5]);
-      if (iris_1825i_163.slice(0, 6) !== 'while ') continue;
-
-
-		let iris_1825i_457 = iris_1825i_163;
-      let iris_1825i_458 = iris_1825i_5 + 1
-      let iris_1825i_459 = iris_1825i_456(iris_1825i_163)
+  for (let i = 0; i + 1 < lines.length; i++) {
+      const t = trim(lines[i]);
+      if (t.slice(0, 6) !== 'while ') continue;
 
 
-		while (!iris_1825i_459 && iris_1825i_458 < iris_1825i_403.length) {
-         const iris_1825i_362 = iris_1825i_405(iris_1825i_403[iris_1825i_458])
-         iris_1825i_457 += " " + iris_1825i_362
-      iris_1825i_458++
-			if (iris_1825i_456(iris_1825i_362)) { iris_1825i_459 = true; break }
+		let joined = t;
+      let endLine = i + 1
+      let foundDo = ends_with_do(t)
+
+
+		while (!foundDo && endLine < lines.length) {
+         const next = trim(lines[endLine])
+         joined += " " + next
+      endLine++
+			if (ends_with_do(next)) { foundDo = true; break }
         }
 
-		if (!iris_1825i_459) continue
-        if (iris_1825i_458 >= iris_1825i_403.length) continue;
-      if (iris_1825i_405(iris_1825i_403[iris_1825i_458]) !== 'end') continue;
+		if (!foundDo) continue
+        if (endLine >= lines.length) continue;
+      if (trim(lines[endLine]) !== 'end') continue;
 
-    const iris_1825i_460 = iris_1825i_457.indexOf("while ") + 6;
-      const iris_1825i_461 = iris_1825i_457.lastIndexOf(' do')
-      if (iris_1825i_461 === -1 || iris_1825i_461 <= iris_1825i_460) continue
+    const kwEnd = joined.indexOf("while ") + 6;
+      const doPos = joined.lastIndexOf(' do')
+      if (doPos === -1 || doPos <= kwEnd) continue
 
-      const iris_1825i_287 = iris_1825i_457.slice(iris_1825i_460, iris_1825i_461);
-      const iris_1825i_462 = iris_1825i_287.indexOf("math.random(1, ");
-      if (iris_1825i_462 === -1) continue;
+      const cond = joined.slice(kwEnd, doPos);
+      const mr = cond.indexOf("math.random(1, ");
+      if (mr === -1) continue;
 
-    const iris_1825i_463 = iris_1825i_462 + 15
-    const iris_1825i_464 = iris_1825i_287.indexOf('.totalWeight)', iris_1825i_463);
-    if (iris_1825i_464 === -1) continue;
+    const tableStart = mr + 15
+    const twEnd = cond.indexOf('.totalWeight)', tableStart);
+    if (twEnd === -1) continue;
 
-    const iris_1825i_465 = iris_1825i_287.slice(iris_1825i_463, iris_1825i_464)
-		const iris_1825i_466 = iris_1825i_465 + ".totalWeight";
-      if (!iris_1825i_287.includes(iris_1825i_466)) continue
+    const tableRef = cond.slice(tableStart, twEnd)
+		const totalExpr = tableRef + ".totalWeight";
+      if (!cond.includes(totalExpr)) continue
 
-		const iris_1825i_467 = iris_1825i_465 + '[';
-		let iris_1825i_82 = 0;
-    let iris_1825i_468 = 0
-        while (iris_1825i_468 < iris_1825i_287.length) {
-         const iris_1825i_469 = iris_1825i_287.indexOf(iris_1825i_467 + (iris_1825i_82 + 1) + "].weight", iris_1825i_468);
-      if (iris_1825i_469 === -1) break
-      iris_1825i_82++
-      iris_1825i_468 = iris_1825i_469 + 1;
+		const weightPattern = tableRef + '[';
+		let count = 0;
+    let scanPos = 0
+        while (scanPos < cond.length) {
+         const wp = cond.indexOf(weightPattern + (count + 1) + "].weight", scanPos);
+      if (wp === -1) break
+      count++
+      scanPos = wp + 1;
         }
-    if (iris_1825i_82 < 2) continue
+    if (count < 2) continue
 
-    let iris_1825i_435 = 0
-		while (iris_1825i_435 < iris_1825i_403[iris_1825i_5].length && iris_1825i_403[iris_1825i_5][iris_1825i_435] === "\t") iris_1825i_435++
-        const iris_1825i_451 = "\t".repeat(iris_1825i_435)
+    let indent = 0
+		while (indent < lines[i].length && lines[i][indent] === "\t") indent++
+        const indentStr = "\t".repeat(indent)
 
 
-    const iris_1825i_470 = '_i'
-    const iris_1825i_471 = '_r'
-        const iris_1825i_472 =
-      iris_1825i_451 + 'local ' + iris_1825i_471 + " = math.random(1, " + iris_1825i_465 + ".totalWeight)\n" +
-            iris_1825i_451 + 'local ' + iris_1825i_470 + " = 1\n" +
-			iris_1825i_451 + 'while ' + iris_1825i_465 + "[" + iris_1825i_470 + '].weight < ' + iris_1825i_471 + " do\n" +
-			iris_1825i_451 + "\t" + iris_1825i_471 + ' = ' + iris_1825i_471 + " - " + iris_1825i_465 + "[" + iris_1825i_470 + "].weight\n" +
-			iris_1825i_451 + "\t" + iris_1825i_470 + ' = ' + iris_1825i_470 + " + 1\n" +
-      iris_1825i_451 + 'end';
+    const idxVar = '_i'
+    const randVar = '_r'
+        const replacement =
+      indentStr + 'local ' + randVar + " = math.random(1, " + tableRef + ".totalWeight)\n" +
+            indentStr + 'local ' + idxVar + " = 1\n" +
+			indentStr + 'while ' + tableRef + "[" + idxVar + '].weight < ' + randVar + " do\n" +
+			indentStr + "\t" + randVar + ' = ' + randVar + " - " + tableRef + "[" + idxVar + "].weight\n" +
+			indentStr + "\t" + idxVar + ' = ' + idxVar + " + 1\n" +
+      indentStr + 'end';
 
-		const iris_1825i_473 = iris_1825i_467 + (iris_1825i_82 + 2) + ']';
-    const iris_1825i_474 = iris_1825i_467 + iris_1825i_470 + ']'
+		const hardcodedIndex = weightPattern + (count + 2) + ']';
+    const varIndex = weightPattern + idxVar + ']'
 
-    iris_1825i_403[iris_1825i_5] = iris_1825i_472
-    for (let iris_1825i_69 = iris_1825i_5 + 1; iris_1825i_69 <= iris_1825i_458; iris_1825i_69++) iris_1825i_455[iris_1825i_69] = true;
+    lines[i] = replacement
+    for (let j = i + 1; j <= endLine; j++) removed[j] = true;
 
-    const iris_1825i_475 = Math.min(iris_1825i_458 + 30, iris_1825i_403.length)
-        for (let iris_1825i_69 = iris_1825i_458 + 1; iris_1825i_69 < iris_1825i_475; iris_1825i_69++) {
-			if (iris_1825i_455[iris_1825i_69]) continue;
-			const iris_1825i_476 = iris_1825i_405(iris_1825i_403[iris_1825i_69])
-      if (iris_1825i_476.slice(0, 9) === 'function ' || iris_1825i_476.slice(0, 15) === 'local function ') break
-         let iris_1825i_418 = 0, iris_1825i_477;
-            while ((iris_1825i_477 = iris_1825i_403[iris_1825i_69].indexOf(iris_1825i_473, iris_1825i_418)) !== -1) {
-				iris_1825i_403[iris_1825i_69] = iris_1825i_403[iris_1825i_69].slice(0, iris_1825i_477) + iris_1825i_474 + iris_1825i_403[iris_1825i_69].slice(iris_1825i_477 + iris_1825i_473.length);
-            iris_1825i_418 = iris_1825i_477 + iris_1825i_474.length;
+    const searchEnd = Math.min(endLine + 30, lines.length)
+        for (let j = endLine + 1; j < searchEnd; j++) {
+			if (removed[j]) continue;
+			const lt = trim(lines[j])
+      if (lt.slice(0, 9) === 'function ' || lt.slice(0, 15) === 'local function ') break
+         let pos = 0, at;
+            while ((at = lines[j].indexOf(hardcodedIndex, pos)) !== -1) {
+				lines[j] = lines[j].slice(0, at) + varIndex + lines[j].slice(at + hardcodedIndex.length);
+            pos = at + varIndex.length;
       }
     }
   }
 
-  let iris_1825i_414 = ""
-   for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_403.length; iris_1825i_5++) {
-      if (iris_1825i_455[iris_1825i_5]) continue
-    iris_1825i_414 += iris_1825i_403[iris_1825i_5]
-      if (iris_1825i_5 + 1 < iris_1825i_403.length) iris_1825i_414 += "\n";
+  let result = ""
+   for (let i = 0; i < lines.length; i++) {
+      if (removed[i]) continue
+    result += lines[i]
+      if (i + 1 < lines.length) result += "\n";
   }
-	return iris_1825i_414
+	return result
 }
 
 
 
-function want_const(iris_1825i_239) {
-	if (!iris_1825i_145.preferConst) return iris_1825i_239
-  const iris_1825i_403 = iris_1825i_239.split("\n")
-    const iris_1825i_404 = (iris_1825i_67) => /[A-Za-z0-9_]/.test(iris_1825i_67);
-  const iris_1825i_405 = (iris_1825i_46) => iris_1825i_46.replace(/^\t+/, "");
-  const iris_1825i_479 = []
-  for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_403.length; iris_1825i_5++) {
-		const iris_1825i_163 = iris_1825i_405(iris_1825i_403[iris_1825i_5])
-    if (iris_1825i_163.slice(0, 6) !== "local ") continue
-		let iris_1825i_180 = iris_1825i_163.slice(6).match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=/)
-    if (!iris_1825i_180) continue;
-      const iris_1825i_118 = iris_1825i_180[1]
-		if (iris_1825i_147.has(iris_1825i_118)) continue;
-		let iris_1825i_480 = false
-      for (let iris_1825i_69 = iris_1825i_5 + 1; iris_1825i_69 < iris_1825i_403.length; iris_1825i_69++) {
-			const iris_1825i_411 = iris_1825i_405(iris_1825i_403[iris_1825i_69]);
-      if (new RegExp("\\b" + iris_1825i_118 + "\\s*(=|\\+=|\\-=|\\*=|/=)").test(iris_1825i_411) &&
-				iris_1825i_411.slice(0, iris_1825i_411.indexOf(iris_1825i_118) + iris_1825i_118.length + 1).length > 0) {
-        if (iris_1825i_411.indexOf(iris_1825i_118 + ' =') === 0 || iris_1825i_411.indexOf(iris_1825i_118 + '+=') === 0 || iris_1825i_411.indexOf(iris_1825i_118 + '-=') === 0 ||
-          iris_1825i_411.indexOf(iris_1825i_118 + '*=') === 0 || iris_1825i_411.indexOf(iris_1825i_118 + "/=") === 0) {
-          iris_1825i_480 = true; break
+function want_const(src) {
+	if (!OPT.preferConst) return src
+  const lines = src.split("\n")
+    const is_word_char = (c) => /[A-Za-z0-9_]/.test(c);
+  const trim = (s) => s.replace(/^\t+/, "");
+  const namesToFlag = []
+  for (let i = 0; i < lines.length; i++) {
+		const t = trim(lines[i])
+    if (t.slice(0, 6) !== "local ") continue
+		let m = t.slice(6).match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=/)
+    if (!m) continue;
+      const name = m[1]
+		if (KEYWORDS.has(name)) continue;
+		let reassigned = false
+      for (let j = i + 1; j < lines.length; j++) {
+			const tj = trim(lines[j]);
+      if (new RegExp("\\b" + name + "\\s*(=|\\+=|\\-=|\\*=|/=)").test(tj) &&
+				tj.slice(0, tj.indexOf(name) + name.length + 1).length > 0) {
+        if (tj.indexOf(name + ' =') === 0 || tj.indexOf(name + '+=') === 0 || tj.indexOf(name + '-=') === 0 ||
+          tj.indexOf(name + '*=') === 0 || tj.indexOf(name + "/=") === 0) {
+          reassigned = true; break
 				}
       }
       }
-		if (!iris_1825i_480) iris_1825i_479.push({ i: iris_1825i_5, name: iris_1825i_118 });
+		if (!reassigned) namesToFlag.push({ i, name });
   }
-	for (const iris_1825i_481 of iris_1825i_479) {
-    const iris_1825i_163 = iris_1825i_403[iris_1825i_481.i]
-    const iris_1825i_482 = iris_1825i_163.slice(0, iris_1825i_163.indexOf('local '));
-		iris_1825i_403[iris_1825i_481.i] = iris_1825i_482 + "const " + iris_1825i_163.slice(iris_1825i_163.indexOf("local ") + 6);
+	for (const f of namesToFlag) {
+    const t = lines[f.i]
+    const lead = t.slice(0, t.indexOf('local '));
+		lines[f.i] = lead + "const " + t.slice(t.indexOf("local ") + 6);
 	}
-	return iris_1825i_403.join("\n");
+	return lines.join("\n");
 }
 
-function drop_dead(iris_1825i_239) {
-	const iris_1825i_403 = to_lines(iris_1825i_239);
-   const iris_1825i_405 = (iris_1825i_46) => iris_1825i_46.replace(/^\t+/, '');
-   const iris_1825i_442 = (iris_1825i_46) => { let iris_1825i_67 = 0; while (iris_1825i_67 < iris_1825i_46.length && iris_1825i_46[iris_1825i_67] === "\t") iris_1825i_67++; return iris_1825i_67 }
-  const iris_1825i_404 = (iris_1825i_67) => /[A-Za-z0-9_]/.test(iris_1825i_67);
+function drop_dead(src) {
+	const lines = to_lines(src);
+   const trim = (s) => s.replace(/^\t+/, '');
+   const count_tabs = (s) => { let c = 0; while (c < s.length && s[c] === "\t") c++; return c }
+  const is_word_char = (c) => /[A-Za-z0-9_]/.test(c);
 
-  const iris_1825i_484 = (iris_1825i_118, iris_1825i_485, iris_1825i_486) => {
-		for (let iris_1825i_69 = iris_1825i_485; iris_1825i_69 <= iris_1825i_486; iris_1825i_69++) {
-			const iris_1825i_411 = iris_1825i_403[iris_1825i_69]
+  const used_by = (name, from, to) => {
+		for (let j = from; j <= to; j++) {
+			const tj = lines[j]
 
-      if (iris_1825i_69 === iris_1825i_485) continue
-			let iris_1825i_55 = 0
-			while (iris_1825i_55 < iris_1825i_411.length) {
-                if (iris_1825i_411[iris_1825i_55] === '"' || iris_1825i_411[iris_1825i_55] === "'") {
-					const iris_1825i_171 = iris_1825i_411[iris_1825i_55++]
-					while (iris_1825i_55 < iris_1825i_411.length && iris_1825i_411[iris_1825i_55] !== iris_1825i_171) { if (iris_1825i_411[iris_1825i_55] === "\\") iris_1825i_55++; iris_1825i_55++ }
-          if (iris_1825i_55 < iris_1825i_411.length) iris_1825i_55++
+      if (j === from) continue
+			let p = 0
+			while (p < tj.length) {
+                if (tj[p] === '"' || tj[p] === "'") {
+					const q = tj[p++]
+					while (p < tj.length && tj[p] !== q) { if (tj[p] === "\\") p++; p++ }
+          if (p < tj.length) p++
 					continue;
 				}
-        if (iris_1825i_411[iris_1825i_55] === '-' && iris_1825i_55 + 1 < iris_1825i_411.length && iris_1825i_411[iris_1825i_55 + 1] === '-') break;
-				if (iris_1825i_404(iris_1825i_411[iris_1825i_55])) {
-					const iris_1825i_412 = iris_1825i_55;
-          while (iris_1825i_55 < iris_1825i_411.length && iris_1825i_404(iris_1825i_411[iris_1825i_55])) iris_1825i_55++
-					if (iris_1825i_411.slice(iris_1825i_412, iris_1825i_55) === iris_1825i_118) return true
-        } else iris_1825i_55++
+        if (tj[p] === '-' && p + 1 < tj.length && tj[p + 1] === '-') break;
+				if (is_word_char(tj[p])) {
+					const ws = p;
+          while (p < tj.length && is_word_char(tj[p])) p++
+					if (tj.slice(ws, p) === name) return true
+        } else p++
       }
 		}
     return false
    }
 
-   let iris_1825i_406 = true
-   let iris_1825i_487 = 0;
-   while (iris_1825i_406 && iris_1825i_487++ < 100) {
-    iris_1825i_406 = false;
-        for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_403.length; iris_1825i_5++) {
-			const iris_1825i_163 = iris_1825i_405(iris_1825i_403[iris_1825i_5]);
-			if (iris_1825i_163.slice(0, 15) === "local function " ) {
-        const iris_1825i_488 = iris_1825i_163.slice(15).match(/^([A-Za-z_][A-Za-z0-9_]*)/)
-            if (!iris_1825i_488) continue;
-        const iris_1825i_118 = iris_1825i_488[1]
-                const iris_1825i_435 = iris_1825i_442(iris_1825i_403[iris_1825i_5]);
+   let changed = true
+   let guard = 0;
+   while (changed && guard++ < 100) {
+    changed = false;
+        for (let i = 0; i < lines.length; i++) {
+			const t = trim(lines[i]);
+			if (t.slice(0, 15) === "local function " ) {
+        const nameMatch = t.slice(15).match(/^([A-Za-z_][A-Za-z0-9_]*)/)
+            if (!nameMatch) continue;
+        const name = nameMatch[1]
+                const indent = count_tabs(lines[i]);
 
-        let iris_1825i_436 = -1, iris_1825i_437 = 1;
-        for (let iris_1825i_69 = iris_1825i_5 + 1; iris_1825i_69 < iris_1825i_403.length; iris_1825i_69++) {
-          const iris_1825i_411 = iris_1825i_405(iris_1825i_403[iris_1825i_69])
-                    const iris_1825i_438 = iris_1825i_442(iris_1825i_403[iris_1825i_69])
-					if (iris_1825i_411 === 'end' && iris_1825i_438 === iris_1825i_435) {
-                  iris_1825i_437--
-            if (iris_1825i_437 === 0) { iris_1825i_436 = iris_1825i_69; break }
+        let endIdx = -1, depth = 1;
+        for (let j = i + 1; j < lines.length; j++) {
+          const tj = trim(lines[j])
+                    const tjIndent = count_tabs(lines[j])
+					if (tj === 'end' && tjIndent === indent) {
+                  depth--
+            if (depth === 0) { endIdx = j; break }
           }
-               if (iris_1825i_438 === iris_1825i_435 && (iris_1825i_411.slice(0, 3) === 'if ' || iris_1825i_411.slice(0, 4) === "for " ||
-                  iris_1825i_411.slice(0, 6) === 'while ' || iris_1825i_411.slice(0, 9) === "function " ||
-						iris_1825i_411.slice(0, 15) === "local function " || iris_1825i_411 === 'repeat' || iris_1825i_411.slice(0, 7) === 'if ')) iris_1825i_437++
+               if (tjIndent === indent && (tj.slice(0, 3) === 'if ' || tj.slice(0, 4) === "for " ||
+                  tj.slice(0, 6) === 'while ' || tj.slice(0, 9) === "function " ||
+						tj.slice(0, 15) === "local function " || tj === 'repeat' || tj.slice(0, 7) === 'if ')) depth++
             }
-				if (iris_1825i_436 < 0) continue;
-        const iris_1825i_410 = iris_1825i_484(iris_1825i_118, iris_1825i_5, iris_1825i_436)
-                if (iris_1825i_410) continue;
-				if (iris_1825i_145.keepDead) {
-               iris_1825i_403[iris_1825i_5] = iris_1825i_403[iris_1825i_5] + " -- unused: defined but never referenced"
+				if (endIdx < 0) continue;
+        const used = used_by(name, i, endIdx)
+                if (used) continue;
+				if (OPT.keepDead) {
+               lines[i] = lines[i] + " -- unused: defined but never referenced"
 				} else {
-          iris_1825i_403.splice(iris_1825i_5, iris_1825i_436 - iris_1825i_5 + 1)
-          iris_1825i_406 = true;
+          lines.splice(i, endIdx - i + 1)
+          changed = true;
 					break
         }
       }
       }
     }
-	return iris_1825i_403.join("\n")
+	return lines.join("\n")
 }
 
 
-function reroll (iris_1825i_239) {
-  if (!iris_1825i_145.rerollUnrolledLoops) return iris_1825i_239
-	const iris_1825i_403 = to_lines(iris_1825i_239);
-  const iris_1825i_442 = (iris_1825i_46) => { let iris_1825i_67 = 0; while (iris_1825i_67 < iris_1825i_46.length && iris_1825i_46[iris_1825i_67] === "\t") iris_1825i_67++; return iris_1825i_67 }
-  const iris_1825i_490 = /(^|[^A-Za-z0-9_])([0-9]+)(?![\w.])/g
+function reroll (src) {
+  if (!OPT.rerollUnrolledLoops) return src
+	const lines = to_lines(src);
+  const count_tabs = (s) => { let c = 0; while (c < s.length && s[c] === "\t") c++; return c }
+  const numLit = /(^|[^A-Za-z0-9_])([0-9]+)(?![\w.])/g
 
-   const iris_1825i_491 = (iris_1825i_46) => {
-    const iris_1825i_367 = []
-    let iris_1825i_180;
-    while ((iris_1825i_180 = iris_1825i_490.exec(iris_1825i_46)) !== null) {
-			iris_1825i_367.push({ at: iris_1825i_180.index + iris_1825i_180[1].length, len: iris_1825i_180[2].length, val: parseInt(iris_1825i_180[2], 10) })
+   const tokenize_nums = (s) => {
+    const found = []
+    let m;
+    while ((m = numLit.exec(s)) !== null) {
+			found.push({ at: m.index + m[1].length, len: m[2].length, val: parseInt(m[2], 10) })
       }
-		return iris_1825i_367
+		return found
   }
 
-  for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_403.length; iris_1825i_5++) {
-		const iris_1825i_435 = iris_1825i_442(iris_1825i_403[iris_1825i_5])
-		const iris_1825i_492 = iris_1825i_403[iris_1825i_5].slice(iris_1825i_435);
-		if (!iris_1825i_492.includes('(')) continue;
-    if (iris_1825i_492.slice(0, 6) === 'while ' || iris_1825i_492.slice(0, 4) === 'for ') continue
+  for (let i = 0; i < lines.length; i++) {
+		const indent = count_tabs(lines[i])
+		const lineTxt = lines[i].slice(indent);
+		if (!lineTxt.includes('(')) continue;
+    if (lineTxt.slice(0, 6) === 'while ' || lineTxt.slice(0, 4) === 'for ') continue
 
-    let iris_1825i_493 = [iris_1825i_5]
-      for (let iris_1825i_69 = iris_1825i_5 + 1; iris_1825i_69 < iris_1825i_403.length && iris_1825i_442(iris_1825i_403[iris_1825i_69]) === iris_1825i_435; iris_1825i_69++) iris_1825i_493.push(iris_1825i_69);
-        if (iris_1825i_493.length < 3) continue
+    let run = [i]
+      for (let j = i + 1; j < lines.length && count_tabs(lines[j]) === indent; j++) run.push(j);
+        if (run.length < 3) continue
 
-    const iris_1825i_494 = iris_1825i_493.map((iris_1825i_495) => iris_1825i_491(iris_1825i_403[iris_1825i_495].slice(iris_1825i_435)));
-    if (iris_1825i_494.length < 3) continue
+    const tokens = run.map((li) => tokenize_nums(lines[li].slice(indent)));
+    if (tokens.length < 3) continue
 
-    for (let iris_1825i_496 = 0; iris_1825i_496 < iris_1825i_494[0].length; iris_1825i_496++) {
-			if (iris_1825i_494[1][iris_1825i_496] === undefined || iris_1825i_494[2][iris_1825i_496] === undefined) break;
-			const iris_1825i_381 = iris_1825i_494[0][iris_1825i_496]
-         const iris_1825i_443 = iris_1825i_494[1][iris_1825i_496]
-         const iris_1825i_445 = iris_1825i_494[2][iris_1825i_496]
-         if (iris_1825i_443.val === iris_1825i_381.val + 1 && iris_1825i_445.val === iris_1825i_443.val + 1 && iris_1825i_381.len === iris_1825i_443.len && iris_1825i_443.len === iris_1825i_445.len) {
-        const iris_1825i_497 = iris_1825i_493.every((iris_1825i_495, iris_1825i_125) => {
-          const iris_1825i_498 = iris_1825i_494[iris_1825i_125]
-               return iris_1825i_498[iris_1825i_496] !== undefined && iris_1825i_498[iris_1825i_496].val === iris_1825i_381.val + iris_1825i_125
+    for (let ti = 0; ti < tokens[0].length; ti++) {
+			if (tokens[1][ti] === undefined || tokens[2][ti] === undefined) break;
+			const t0 = tokens[0][ti]
+         const t1 = tokens[1][ti]
+         const t2 = tokens[2][ti]
+         if (t1.val === t0.val + 1 && t2.val === t1.val + 1 && t0.len === t1.len && t1.len === t2.len) {
+        const stepOk = run.every((li, k) => {
+          const tk = tokens[k]
+               return tk[ti] !== undefined && tk[ti].val === t0.val + k
         });
-            if (!iris_1825i_497) continue;
-        const iris_1825i_499 = iris_1825i_381.val + iris_1825i_493.length - 1;
+            if (!stepOk) continue;
+        const endVal = t0.val + run.length - 1;
 
-        let iris_1825i_371 = true;
-            const iris_1825i_500 = iris_1825i_403[iris_1825i_493[0]].slice(iris_1825i_435);
-                const iris_1825i_501 = iris_1825i_500.slice(0, iris_1825i_381.at) + iris_1825i_500.slice(iris_1825i_381.at + iris_1825i_381.len)
-                for (let iris_1825i_125 = 1; iris_1825i_125 < iris_1825i_493.length && iris_1825i_371; iris_1825i_125++) {
-                    if (iris_1825i_494[iris_1825i_125].length !== iris_1825i_494[0].length) { iris_1825i_371 = false; break }
-          const iris_1825i_502 = iris_1825i_403[iris_1825i_493[iris_1825i_125]].slice(iris_1825i_435);
-					const iris_1825i_498 = iris_1825i_494[iris_1825i_125]
-					if (iris_1825i_498[iris_1825i_496] === undefined || iris_1825i_498[iris_1825i_496].len !== iris_1825i_381.len) { iris_1825i_371 = false; break }
-                    if (iris_1825i_502.slice(0, iris_1825i_498[iris_1825i_496].at) + iris_1825i_502.slice(iris_1825i_498[iris_1825i_496].at + iris_1825i_498[iris_1825i_496].len) !== iris_1825i_501) { iris_1825i_371 = false; break }
-                    for (let iris_1825i_171 = 0; iris_1825i_171 < iris_1825i_494[0].length; iris_1825i_171++) {
-            if (iris_1825i_171 === iris_1825i_496) continue
-            if (iris_1825i_494[iris_1825i_125][iris_1825i_171].val !== iris_1825i_494[0][iris_1825i_171].val) { iris_1825i_371 = false; break }
+        let shapeOk = true;
+            const t0txt = lines[run[0]].slice(indent);
+                const baseWithout = t0txt.slice(0, t0.at) + t0txt.slice(t0.at + t0.len)
+                for (let k = 1; k < run.length && shapeOk; k++) {
+                    if (tokens[k].length !== tokens[0].length) { shapeOk = false; break }
+          const txt = lines[run[k]].slice(indent);
+					const tk = tokens[k]
+					if (tk[ti] === undefined || tk[ti].len !== t0.len) { shapeOk = false; break }
+                    if (txt.slice(0, tk[ti].at) + txt.slice(tk[ti].at + tk[ti].len) !== baseWithout) { shapeOk = false; break }
+                    for (let q = 0; q < tokens[0].length; q++) {
+            if (q === ti) continue
+            if (tokens[k][q].val !== tokens[0][q].val) { shapeOk = false; break }
 					}
             }
-				if (!iris_1825i_371) continue;
-        const iris_1825i_340 = (iris_1825i_145.generatedNames === 'readable') ? "i" : 'i';
-				const iris_1825i_4 = []
-            const iris_1825i_451 = "\t".repeat(iris_1825i_435);
-        const iris_1825i_503 = iris_1825i_451
-                const iris_1825i_504 = iris_1825i_403[iris_1825i_493[0]].slice(iris_1825i_435);
-            let iris_1825i_331 = iris_1825i_504;
+				if (!shapeOk) continue;
+        const var_name = (OPT.generatedNames === 'readable') ? "i" : 'i';
+				const out = []
+            const indentStr = "\t".repeat(indent);
+        const pad = indentStr
+                const firstLine = lines[run[0]].slice(indent);
+            let body = firstLine;
 
-        const iris_1825i_505 = iris_1825i_493.map((iris_1825i_495) => {
-          let iris_1825i_46 = iris_1825i_403[iris_1825i_495].slice(iris_1825i_435);
-					let iris_1825i_386 = ''
-          let iris_1825i_418 = 0;
-                    const iris_1825i_498 = iris_1825i_494[iris_1825i_493.indexOf(iris_1825i_495)]
-          const iris_1825i_477 = iris_1825i_498[iris_1825i_496].at
-					iris_1825i_386 += iris_1825i_46.slice(0, iris_1825i_477) + iris_1825i_340 + iris_1825i_46.slice(iris_1825i_477 + iris_1825i_498[iris_1825i_496].len)
-					return iris_1825i_386
+        const subs = run.map((li) => {
+          let s = lines[li].slice(indent);
+					let acc = ''
+          let pos = 0;
+                    const tk = tokens[run.indexOf(li)]
+          const at = tk[ti].at
+					acc += s.slice(0, at) + var_name + s.slice(at + tk[ti].len)
+					return acc
         });
-        const iris_1825i_506 = []
-        for (const iris_1825i_46 of iris_1825i_505) if (iris_1825i_506.indexOf(iris_1825i_46) < 0) iris_1825i_506.push(iris_1825i_46);
-				iris_1825i_4.push(iris_1825i_451 + 'for ' + iris_1825i_340 + " = " + iris_1825i_381.val + ", " + iris_1825i_499 + ' do -- Re-rolled loop')
-            for (const iris_1825i_46 of iris_1825i_506) iris_1825i_4.push(iris_1825i_451 + "\t" + iris_1825i_46.replace(new RegExp("\\b" + iris_1825i_340 + "\\b"), iris_1825i_340));
-            iris_1825i_4.push(iris_1825i_451 + 'end');
-				if (iris_1825i_506.length === 1) {
-					iris_1825i_403.splice(iris_1825i_493[0], iris_1825i_493.length, ...iris_1825i_4)
-					iris_1825i_5 = iris_1825i_493[0] + iris_1825i_4.length - 1
-            } else if (iris_1825i_506.length === 2 && iris_1825i_493.length === 3) {
-                    iris_1825i_403.splice(iris_1825i_493[0], iris_1825i_493.length, ...iris_1825i_4)
-          iris_1825i_5 = iris_1825i_493[0] + iris_1825i_4.length - 1
+        const dedup = []
+        for (const s of subs) if (dedup.indexOf(s) < 0) dedup.push(s);
+				out.push(indentStr + 'for ' + var_name + " = " + t0.val + ", " + endVal + ' do -- Re-rolled loop')
+            for (const s of dedup) out.push(indentStr + "\t" + s.replace(new RegExp("\\b" + var_name + "\\b"), var_name));
+            out.push(indentStr + 'end');
+				if (dedup.length === 1) {
+					lines.splice(run[0], run.length, ...out)
+					i = run[0] + out.length - 1
+            } else if (dedup.length === 2 && run.length === 3) {
+                    lines.splice(run[0], run.length, ...out)
+          i = run[0] + out.length - 1
                 }
         break;
 			}
     }
 	}
-   return iris_1825i_403.join("\n")
+   return lines.join("\n")
 }
 
 
-function unfold(iris_1825i_239) {
-	if (!iris_1825i_145.unfoldModuleTables) return iris_1825i_239;
-  const iris_1825i_403 = to_lines(iris_1825i_239);
-  const iris_1825i_442 = (iris_1825i_46) => { let iris_1825i_67 = 0; while (iris_1825i_67 < iris_1825i_46.length && iris_1825i_46[iris_1825i_67] === "\t") iris_1825i_67++; return iris_1825i_67 }
-  const iris_1825i_405 = (iris_1825i_46) => iris_1825i_46.replace(/^\t+/, '').replace(/[ \t]+$/, "")
+function unfold(src) {
+	if (!OPT.unfoldModuleTables) return src;
+  const lines = to_lines(src);
+  const count_tabs = (s) => { let c = 0; while (c < s.length && s[c] === "\t") c++; return c }
+  const trim = (s) => s.replace(/^\t+/, '').replace(/[ \t]+$/, "")
 
-  for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_403.length; iris_1825i_5++) {
-    if (iris_1825i_405(iris_1825i_403[iris_1825i_5]) !== 'return {') continue
-    let iris_1825i_437 = 0, iris_1825i_436 = -1
-      for (let iris_1825i_69 = iris_1825i_5; iris_1825i_69 < iris_1825i_403.length; iris_1825i_69++) {
-         const iris_1825i_46 = iris_1825i_403[iris_1825i_69]
-      for (let iris_1825i_125 = 0; iris_1825i_125 < iris_1825i_46.length; iris_1825i_125++) {
-				if (iris_1825i_46[iris_1825i_125] === "{") iris_1825i_437++
-				else if (iris_1825i_46[iris_1825i_125] === '}') iris_1825i_437--
+  for (let i = 0; i < lines.length; i++) {
+    if (trim(lines[i]) !== 'return {') continue
+    let depth = 0, endIdx = -1
+      for (let j = i; j < lines.length; j++) {
+         const s = lines[j]
+      for (let k = 0; k < s.length; k++) {
+				if (s[k] === "{") depth++
+				else if (s[k] === '}') depth--
       }
-      if (iris_1825i_437 === 0) { iris_1825i_436 = iris_1825i_69; break }
+      if (depth === 0) { endIdx = j; break }
     }
-      if (iris_1825i_436 < 0) continue
+      if (endIdx < 0) continue
 
-    const iris_1825i_508 = /^([A-Za-z_]\w*)\s*=\s*function\s*\(/
-    const iris_1825i_509 = []
-    const iris_1825i_510 = []
-		let iris_1825i_69 = iris_1825i_5 + 1;
-      while (iris_1825i_69 < iris_1825i_436) {
-            const iris_1825i_180 = iris_1825i_405(iris_1825i_403[iris_1825i_69]).match(iris_1825i_508)
-			if (!iris_1825i_180) { iris_1825i_69++; continue }
-         const iris_1825i_51 = iris_1825i_180[1]
-      const iris_1825i_511 = iris_1825i_405(iris_1825i_403[iris_1825i_69])
-      const iris_1825i_317 = iris_1825i_511.slice(iris_1825i_511.indexOf('function') + "function".length);
-			let iris_1825i_512 = 1, iris_1825i_152 = -1;
-            for (let iris_1825i_125 = iris_1825i_69 + 1; iris_1825i_125 <= iris_1825i_436; iris_1825i_125++) {
-            const iris_1825i_163 = iris_1825i_405(iris_1825i_403[iris_1825i_125])
-        if (/^(function\b|local function\b|if\b|for\b|while\b|repeat\b)/.test(iris_1825i_163) || /\bdo$/.test(iris_1825i_163)) iris_1825i_512++
-            else if (/^end\b/.test(iris_1825i_163) || /^until\b/.test(iris_1825i_163)) { iris_1825i_512--; if (iris_1825i_512 === 0) { iris_1825i_152 = iris_1825i_125; break } }
+    const entryRe = /^([A-Za-z_]\w*)\s*=\s*function\s*\(/
+    const hoisted = []
+    const removal = []
+		let j = i + 1;
+      while (j < endIdx) {
+            const m = trim(lines[j]).match(entryRe)
+			if (!m) { j++; continue }
+         const key = m[1]
+      const fnOpen = trim(lines[j])
+      const args = fnOpen.slice(fnOpen.indexOf('function') + "function".length);
+			let d = 1, close = -1;
+            for (let k = j + 1; k <= endIdx; k++) {
+            const t = trim(lines[k])
+        if (/^(function\b|local function\b|if\b|for\b|while\b|repeat\b)/.test(t) || /\bdo$/.test(t)) d++
+            else if (/^end\b/.test(t) || /^until\b/.test(t)) { d--; if (d === 0) { close = k; break } }
             }
-			if (iris_1825i_152 < 0) { iris_1825i_69++; continue }
-            const iris_1825i_179 = iris_1825i_442(iris_1825i_403[iris_1825i_5]);
-			const iris_1825i_331 = []
-			for (let iris_1825i_125 = iris_1825i_69 + 1; iris_1825i_125 < iris_1825i_152; iris_1825i_125++) {
-        const iris_1825i_513 = iris_1825i_442(iris_1825i_403[iris_1825i_125])
-        iris_1825i_331.push("\t".repeat(Math.max(0, iris_1825i_513 - 1)) + iris_1825i_403[iris_1825i_125].slice(iris_1825i_513))
+			if (close < 0) { j++; continue }
+            const base = count_tabs(lines[i]);
+			const body = []
+			for (let k = j + 1; k < close; k++) {
+        const lvl = count_tabs(lines[k])
+        body.push("\t".repeat(Math.max(0, lvl - 1)) + lines[k].slice(lvl))
 			}
-            const iris_1825i_514 = /,\s*$/.test(iris_1825i_403[iris_1825i_152])
-			iris_1825i_509.push("\t".repeat(iris_1825i_179) + 'local function ' + iris_1825i_317);
-      for (const iris_1825i_47 of iris_1825i_331) iris_1825i_509.push(iris_1825i_47);
-			iris_1825i_509.push("\t".repeat(iris_1825i_179) + 'end')
-			const iris_1825i_435 = "\t".repeat(iris_1825i_442(iris_1825i_403[iris_1825i_69]))
-      iris_1825i_510.push([iris_1825i_69, iris_1825i_152, iris_1825i_435 + iris_1825i_51 + ' = ' + iris_1825i_51 + (iris_1825i_514 ? ',' : '')])
-         iris_1825i_69 = iris_1825i_152 + 1
+            const hadComma = /,\s*$/.test(lines[close])
+			hoisted.push("\t".repeat(base) + 'local function ' + args);
+      for (const b of body) hoisted.push(b);
+			hoisted.push("\t".repeat(base) + 'end')
+			const indent = "\t".repeat(count_tabs(lines[j]))
+      removal.push([j, close, indent + key + ' = ' + key + (hadComma ? ',' : '')])
+         j = close + 1
 		}
-        if (iris_1825i_510.length === 0) continue;
-		for (let iris_1825i_515 = iris_1825i_510.length - 1; iris_1825i_515 >= 0; iris_1825i_515--) {
-      iris_1825i_403.splice(iris_1825i_510[iris_1825i_515][0], iris_1825i_510[iris_1825i_515][1] - iris_1825i_510[iris_1825i_515][0] + 1, iris_1825i_510[iris_1825i_515][2]);
+        if (removal.length === 0) continue;
+		for (let R = removal.length - 1; R >= 0; R--) {
+      lines.splice(removal[R][0], removal[R][1] - removal[R][0] + 1, removal[R][2]);
     }
-      iris_1825i_403.splice(iris_1825i_5, 0, ...iris_1825i_509, '')
+      lines.splice(i, 0, ...hoisted, '')
 		break
 	}
-   return iris_1825i_403.join("\n")
+   return lines.join("\n")
 }
 
-function fold_temps(iris_1825i_239) {
-  if (!iris_1825i_145.foldSingleUseTemps) return iris_1825i_239
-  const iris_1825i_403 = to_lines(iris_1825i_239)
-   const iris_1825i_405 = (iris_1825i_46) => iris_1825i_46.replace(/^\t+/, '').replace(/[ \t]+$/, '');
-	const iris_1825i_517 = /^(number|string|boolean|buffer|vector|object|table|function|color|cframe|udim2|v|p|argument|num|str|bool|obj|tbl|vec|buf|fn|res|ok|result)\d+$/i;
-	const iris_1825i_518 = (iris_1825i_67) => /[A-Za-z0-9_]/.test(iris_1825i_67)
-	const iris_1825i_519 = (iris_1825i_130, iris_1825i_118) => {
-        let iris_1825i_251 = 0, iris_1825i_55 = 0;
-    while (iris_1825i_55 < iris_1825i_130.length) {
-			if (iris_1825i_130[iris_1825i_55] === '"' || iris_1825i_130[iris_1825i_55] === "'") {
-        const iris_1825i_171 = iris_1825i_130[iris_1825i_55++]
-				while (iris_1825i_55 < iris_1825i_130.length && iris_1825i_130[iris_1825i_55] !== iris_1825i_171) { if (iris_1825i_130[iris_1825i_55] === "\\") iris_1825i_55++; iris_1825i_55++ }
-				if (iris_1825i_55 < iris_1825i_130.length) iris_1825i_55++
+function fold_temps(src) {
+  if (!OPT.foldSingleUseTemps) return src
+  const lines = to_lines(src)
+   const trim = (s) => s.replace(/^\t+/, '').replace(/[ \t]+$/, '');
+	const tempRe = /^(number|string|boolean|buffer|vector|object|table|function|color|cframe|udim2|v|p|argument|num|str|bool|obj|tbl|vec|buf|fn|res|ok|result)\d+$/i;
+	const is_word = (c) => /[A-Za-z0-9_]/.test(c)
+	const count_name = (line, name) => {
+        let n = 0, p = 0;
+    while (p < line.length) {
+			if (line[p] === '"' || line[p] === "'") {
+        const q = line[p++]
+				while (p < line.length && line[p] !== q) { if (line[p] === "\\") p++; p++ }
+				if (p < line.length) p++
 				continue
       }
-         if (iris_1825i_130[iris_1825i_55] === "-" && iris_1825i_55 + 1 < iris_1825i_130.length && iris_1825i_130[iris_1825i_55 + 1] === "-") break;
-			if (iris_1825i_518(iris_1825i_130[iris_1825i_55])) {
-                const iris_1825i_520 = iris_1825i_55
-        while (iris_1825i_55 < iris_1825i_130.length && iris_1825i_518(iris_1825i_130[iris_1825i_55])) iris_1825i_55++
-				if (iris_1825i_130.slice(iris_1825i_520, iris_1825i_55) === iris_1825i_118) iris_1825i_251++
-            } else iris_1825i_55++
+         if (line[p] === "-" && p + 1 < line.length && line[p + 1] === "-") break;
+			if (is_word(line[p])) {
+                const s0 = p
+        while (p < line.length && is_word(line[p])) p++
+				if (line.slice(s0, p) === name) n++
+            } else p++
       }
-      return iris_1825i_251;
+      return n;
 	}
-  const iris_1825i_521 = (iris_1825i_130, iris_1825i_118, iris_1825i_522) => {
-		let iris_1825i_55 = 0
-		while (iris_1825i_55 < iris_1825i_130.length) {
-      if (iris_1825i_130[iris_1825i_55] === '"' || iris_1825i_130[iris_1825i_55] === "'") {
-				const iris_1825i_171 = iris_1825i_130[iris_1825i_55++]
-                while (iris_1825i_55 < iris_1825i_130.length && iris_1825i_130[iris_1825i_55] !== iris_1825i_171) { if (iris_1825i_130[iris_1825i_55] === "\\") iris_1825i_55++; iris_1825i_55++ }
-            if (iris_1825i_55 < iris_1825i_130.length) iris_1825i_55++
+  const replace_token = (line, name, repl) => {
+		let p = 0
+		while (p < line.length) {
+      if (line[p] === '"' || line[p] === "'") {
+				const q = line[p++]
+                while (p < line.length && line[p] !== q) { if (line[p] === "\\") p++; p++ }
+            if (p < line.length) p++
         continue;
             }
-      if (iris_1825i_130[iris_1825i_55] === '-' && iris_1825i_55 + 1 < iris_1825i_130.length && iris_1825i_130[iris_1825i_55 + 1] === '-') break;
-            if (iris_1825i_518(iris_1825i_130[iris_1825i_55])) {
-        const iris_1825i_520 = iris_1825i_55;
-            while (iris_1825i_55 < iris_1825i_130.length && iris_1825i_518(iris_1825i_130[iris_1825i_55])) iris_1825i_55++
-        if (iris_1825i_130.slice(iris_1825i_520, iris_1825i_55) === iris_1825i_118) return iris_1825i_130.slice(0, iris_1825i_520) + iris_1825i_522 + iris_1825i_130.slice(iris_1825i_55);
-            } else iris_1825i_55++
+      if (line[p] === '-' && p + 1 < line.length && line[p + 1] === '-') break;
+            if (is_word(line[p])) {
+        const s0 = p;
+            while (p < line.length && is_word(line[p])) p++
+        if (line.slice(s0, p) === name) return line.slice(0, s0) + repl + line.slice(p);
+            } else p++
       }
-        return iris_1825i_130
+        return line
 	}
 
-    let iris_1825i_406 = true, iris_1825i_487 = 0
-  while (iris_1825i_406 && iris_1825i_487++ < 300) {
-		iris_1825i_406 = false
-		for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_403.length; iris_1825i_5++) {
-      const iris_1825i_163 = iris_1825i_405(iris_1825i_403[iris_1825i_5]);
-            const iris_1825i_180 = iris_1825i_163.match(/^local\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?::\s*[^=\s]+(?:\s*\|\s*\w+)*)?\s*=\s*(.+)$/);
-			if (!iris_1825i_180) continue
-			const iris_1825i_118 = iris_1825i_180[1]
-      if (!iris_1825i_517.test(iris_1825i_118)) continue
-			const iris_1825i_168 = iris_1825i_180[2].trim().replace(/[,;]$/, '');
-      if (iris_1825i_168 === 'nil' || iris_1825i_168.includes('{') || iris_1825i_168.includes('}')) continue
+    let changed = true, guard = 0
+  while (changed && guard++ < 300) {
+		changed = false
+		for (let i = 0; i < lines.length; i++) {
+      const t = trim(lines[i]);
+            const m = t.match(/^local\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?::\s*[^=\s]+(?:\s*\|\s*\w+)*)?\s*=\s*(.+)$/);
+			if (!m) continue
+			const name = m[1]
+      if (!tempRe.test(name)) continue
+			const expr = m[2].trim().replace(/[,;]$/, '');
+      if (expr === 'nil' || expr.includes('{') || expr.includes('}')) continue
 
 
-         let iris_1825i_69 = iris_1825i_5 + 1
-      while (iris_1825i_69 < iris_1825i_403.length) {
-				const iris_1825i_411 = iris_1825i_405(iris_1825i_403[iris_1825i_69])
-        if (iris_1825i_411 === '' || iris_1825i_411.slice(0, 2) === "--") { iris_1825i_69++; continue }
+         let j = i + 1
+      while (j < lines.length) {
+				const tj = trim(lines[j])
+        if (tj === '' || tj.slice(0, 2) === "--") { j++; continue }
             break
             }
-      if (iris_1825i_69 >= iris_1825i_403.length) continue;
-         if (iris_1825i_519(iris_1825i_403[iris_1825i_69], iris_1825i_118) !== 1) continue
+      if (j >= lines.length) continue;
+         if (count_name(lines[j], name) !== 1) continue
 
-      if (iris_1825i_403[iris_1825i_69].indexOf(iris_1825i_118 + ':') >= 0 || iris_1825i_403[iris_1825i_69].indexOf(iris_1825i_118 + '.') >= 0) continue;
-      const iris_1825i_523 = /^[A-Za-z_][A-Za-z0-9_.]*$/.test(iris_1825i_168) || /^-?\d+(\.\d+)?$/.test(iris_1825i_168) ||
-                (iris_1825i_168[0] === '"' && iris_1825i_168[iris_1825i_168.length - 1] === '"');
-            const iris_1825i_524 = iris_1825i_168.indexOf("(") > 0 && iris_1825i_168.charAt(iris_1825i_168.length - 1) === ')'
-			let iris_1825i_525 = iris_1825i_168;
-            if (!iris_1825i_523 && !iris_1825i_524 && iris_1825i_168.includes(' ')) iris_1825i_525 = "(" + iris_1825i_525 + ")"
-         iris_1825i_403[iris_1825i_69] = iris_1825i_521(iris_1825i_403[iris_1825i_69], iris_1825i_118, iris_1825i_525);
-			iris_1825i_403.splice(iris_1825i_5, 1);
-      iris_1825i_406 = true;
+      if (lines[j].indexOf(name + ':') >= 0 || lines[j].indexOf(name + '.') >= 0) continue;
+      const isAtom = /^[A-Za-z_][A-Za-z0-9_.]*$/.test(expr) || /^-?\d+(\.\d+)?$/.test(expr) ||
+                (expr[0] === '"' && expr[expr.length - 1] === '"');
+            const isCall = expr.indexOf("(") > 0 && expr.charAt(expr.length - 1) === ')'
+			let inl = expr;
+            if (!isAtom && !isCall && expr.includes(' ')) inl = "(" + inl + ")"
+         lines[j] = replace_token(lines[j], name, inl);
+			lines.splice(i, 1);
+      changed = true;
       break;
     }
    }
-    return iris_1825i_403.join("\n");
+    return lines.join("\n");
 }
 
-function add_equal (iris_1825i_239) {
-  const iris_1825i_403 = to_lines(iris_1825i_239);
-  const iris_1825i_405 = (iris_1825i_46) => iris_1825i_46.replace(/^\t+/, '').replace(/[ \t]+$/, '')
-	for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_403.length; iris_1825i_5++) {
-		const iris_1825i_163 = iris_1825i_405(iris_1825i_403[iris_1825i_5]);
-    if (iris_1825i_163.slice(0, 6) === 'local ') continue;
-		const iris_1825i_180 = iris_1825i_163.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*\1\s*([+\-*/])\s*(.+)$/)
-    if (!iris_1825i_180) continue;
-    const iris_1825i_435 = iris_1825i_403[iris_1825i_5].length - iris_1825i_163.length
-    const iris_1825i_118 = iris_1825i_180[1]
+function add_equal (src) {
+  const lines = to_lines(src);
+  const trim = (s) => s.replace(/^\t+/, '').replace(/[ \t]+$/, '')
+	for (let i = 0; i < lines.length; i++) {
+		const t = trim(lines[i]);
+    if (t.slice(0, 6) === 'local ') continue;
+		const m = t.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*\1\s*([+\-*/])\s*(.+)$/)
+    if (!m) continue;
+    const indent = lines[i].length - t.length
+    const name = m[1]
 
 
-      iris_1825i_403[iris_1825i_5] = iris_1825i_403[iris_1825i_5].slice(0, iris_1825i_435) + iris_1825i_118 + ' ' + (iris_1825i_180[2] === "*" ? "*" : iris_1825i_180[2]) + "= " + iris_1825i_180[3].trim().replace(/,$/, "");
+      lines[i] = lines[i].slice(0, indent) + name + ' ' + (m[2] === "*" ? "*" : m[2]) + "= " + m[3].trim().replace(/,$/, "");
   }
-	return iris_1825i_403.join("\n");
+	return lines.join("\n");
 }
 
 
 
-function clean_output (iris_1825i_239) {
-	let iris_1825i_414 = fold_arith(iris_1825i_239)
-  iris_1825i_414 = pick_weighted(iris_1825i_414);
-	iris_1825i_414 = drop_empty_ifs(iris_1825i_414);
-    iris_1825i_414 = squash_if_true(iris_1825i_414)
-  iris_1825i_414 = merge_ifs(iris_1825i_414);
-  iris_1825i_414 = drop_trailing_return(iris_1825i_414);
-  iris_1825i_414 = drop_dead(iris_1825i_414)
-  iris_1825i_414 = fold_temps(iris_1825i_414);
-   iris_1825i_414 = want_const(iris_1825i_414)
-    iris_1825i_414 = add_equal(iris_1825i_414);
-    iris_1825i_414 = reroll(iris_1825i_414)
-  iris_1825i_414 = unfold(iris_1825i_414)
-  return iris_1825i_414;
+function clean_output (src) {
+	let result = fold_arith(src)
+  result = pick_weighted(result);
+	result = drop_empty_ifs(result);
+    result = squash_if_true(result)
+  result = merge_ifs(result);
+  result = drop_trailing_return(result);
+  result = drop_dead(result)
+  result = fold_temps(result);
+   result = want_const(result)
+    result = add_equal(result);
+    result = reroll(result)
+  result = unfold(result)
+  return result;
 }
 
 function messy_format (src) {
@@ -3856,100 +3859,100 @@ function messy_format (src) {
   return out.join('\n');
 }
 
-function render_chunk (iris_1825i_127) {
-  if (iris_1825i_127.protos.length === 0) return "-- empty program\n";
-  const iris_1825i_529 = iris_1825i_127.protos[iris_1825i_127.main]
-   const iris_1825i_395 = new iris_1825i_237(iris_1825i_127, iris_1825i_529, [], true);
-	const iris_1825i_4 = new iris_1825i_236()
-   iris_1825i_4.indent = 0
-	iris_1825i_395.walk(iris_1825i_4, 0, iris_1825i_529.code.length, -1, false)
+function render_chunk (program) {
+  if (program.protos.length === 0) return "-- empty program\n";
+  const main = program.protos[program.main]
+   const st = new CompileState(program, main, [], true);
+	const out = new Sink()
+   out.indent = 0
+	st.walk(out, 0, main.code.length, -1, false)
 
-   let iris_1825i_530 = "-- iris decompiler v1\n\n";
-	const iris_1825i_531 = (iris_1825i_46) => iris_1825i_46.slice(0, 9) === 'function ' || iris_1825i_46.slice(0, 15) === 'local function '
-  const iris_1825i_532 = (iris_1825i_46) => iris_1825i_46 === "end";
-    for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_4.lines.length; iris_1825i_5++) {
-        const iris_1825i_173 = iris_1825i_4.lines[iris_1825i_5]
-        const iris_1825i_391 = Math.max(0, iris_1825i_173.level)
-    if (iris_1825i_391 === 0 && iris_1825i_5 > 0 && iris_1825i_531(iris_1825i_173.text)) {
-			if (iris_1825i_530.length > 0 && iris_1825i_530[iris_1825i_530.length - 1] === "\n") {
-        const iris_1825i_418 = iris_1825i_530.lastIndexOf("\n", iris_1825i_530.length - 2)
-        if (iris_1825i_418 !== -1 && iris_1825i_530[iris_1825i_418 + 1] !== "\n") iris_1825i_530 += "\n"
+   let res = "-- iris decompiler v1\n\n";
+	const is_block_open = (s) => s.slice(0, 9) === 'function ' || s.slice(0, 15) === 'local function '
+  const is_end_line = (s) => s === "end";
+    for (let i = 0; i < out.lines.length; i++) {
+        const l = out.lines[i]
+        const level = Math.max(0, l.level)
+    if (level === 0 && i > 0 && is_block_open(l.text)) {
+			if (res.length > 0 && res[res.length - 1] === "\n") {
+        const pos = res.lastIndexOf("\n", res.length - 2)
+        if (pos !== -1 && res[pos + 1] !== "\n") res += "\n"
          }
         }
-    const iris_1825i_451 = indent_unit().repeat(iris_1825i_391)
-        iris_1825i_530 += iris_1825i_451 + iris_1825i_173.text + "\n";
-		if (iris_1825i_391 === 0 && iris_1825i_532(iris_1825i_173.text) && iris_1825i_5 + 1 < iris_1825i_4.lines.length) iris_1825i_530 += "\n";
+    const indentStr = indent_unit().repeat(level)
+        res += indentStr + l.text + "\n";
+		if (level === 0 && is_end_line(l.text) && i + 1 < out.lines.length) res += "\n";
    }
-	return messy_format(clean_output(kill_dead_vars(iris_1825i_530)))
+	return messy_format(clean_output(kill_dead_vars(res)))
 }
 
 
-function decompile (iris_1825i_141) {
-   const iris_1825i_127 = load_it(iris_1825i_141);
-  return render_chunk(iris_1825i_127);
+function decompile (input) {
+   const program = load_it(input);
+  return render_chunk(program);
 }
 
-function decompileResult(iris_1825i_141) {
-	const iris_1825i_127 = load_it(iris_1825i_141);
-   return { source: render_chunk(iris_1825i_127), program: iris_1825i_127, version: iris_1825i_127.version, decodedFromBase64: iris_1825i_127._fromB64 === true }
+function decompileResult(input) {
+	const program = load_it(input);
+   return { source: render_chunk(program), program, version: program.version, decodedFromBase64: program._fromB64 === true }
 }
 
-function load_it (iris_1825i_141) {
-	let iris_1825i_536 = '';
-   const iris_1825i_537 = (iris_1825i_12) => {
+function load_it (input) {
+	let lastErr = '';
+   const attempt = (bytes) => {
 		try {
-			return read_bytes(iris_1825i_12)
-        } catch (iris_1825i_123) {
-         iris_1825i_536 = iris_1825i_123.message || String(iris_1825i_123);
+			return read_bytes(bytes)
+        } catch (e) {
+         lastErr = e.message || String(e);
             return null
 		}
   }
-	if (typeof Uint8Array !== "undefined" && iris_1825i_141 instanceof Uint8Array) {
-    const iris_1825i_55 = iris_1825i_537(iris_1825i_141)
-		if (iris_1825i_55) { iris_1825i_55._fromB64 = false; return iris_1825i_55 }
-   } else if (iris_1825i_141 && typeof iris_1825i_141 === "object") {
-      if (iris_1825i_141.bytes && iris_1825i_141.bytes.length > 0) {
-         const iris_1825i_55 = iris_1825i_537(iris_1825i_141.bytes instanceof Uint8Array ? iris_1825i_141.bytes : new Uint8Array(iris_1825i_141.bytes));
-			if (iris_1825i_55) { iris_1825i_55._fromB64 = false; return iris_1825i_55 }
+	if (typeof Uint8Array !== "undefined" && input instanceof Uint8Array) {
+    const p = attempt(input)
+		if (p) { p._fromB64 = false; return p }
+   } else if (input && typeof input === "object") {
+      if (input.bytes && input.bytes.length > 0) {
+         const p = attempt(input.bytes instanceof Uint8Array ? input.bytes : new Uint8Array(input.bytes));
+			if (p) { p._fromB64 = false; return p }
 		}
-    if (iris_1825i_141.base64) {
-      const iris_1825i_538 = base64Decode(iris_1825i_141.base64)
-            if (!iris_1825i_538) throw new Error("invalid base64 input");
-         const iris_1825i_55 = iris_1825i_537(iris_1825i_538)
-			if (!iris_1825i_55) throw new Error('failed to parse bytecode: ' + iris_1825i_536)
-         iris_1825i_55._fromB64 = true; return iris_1825i_55
+    if (input.base64) {
+      const decoded = base64Decode(input.base64)
+            if (!decoded) throw new Error("invalid base64 input");
+         const p = attempt(decoded)
+			if (!p) throw new Error('failed to parse bytecode: ' + lastErr)
+         p._fromB64 = true; return p
         }
     }
-    if (iris_1825i_536) throw new Error('failed to parse bytecode: ' + iris_1825i_536);
+    if (lastErr) throw new Error('failed to parse bytecode: ' + lastErr);
 	throw new Error('no bytecode provided (expected `bytes` or `base64`)')
 }
 
-function decompileBase64(iris_1825i_540) {
-  return decompile({ base64: iris_1825i_540 });
+function decompileBase64(b64) {
+  return decompile({ base64: b64 });
 }
 
-function disasm(iris_1825i_141) {
-    const iris_1825i_127 = load_it(iris_1825i_141)
-	return disassemble(iris_1825i_127);
+function disasm(input) {
+    const program = load_it(input)
+	return disassemble(program);
 }
 
-const iris_1825i_542 = {
-  decompile: decompile,
-   decompileResult: decompileResult,
-  decompileBase64: decompileBase64,
+const iris = {
+  decompile,
+   decompileResult,
+  decompileBase64,
   disassemble: disasm,
-  disassembleProto: (iris_1825i_141, iris_1825i_56) => disassembleProto(load_it(iris_1825i_141), iris_1825i_56),
-	read: (iris_1825i_141) => load_it(iris_1825i_141),
-	base64Decode: base64Decode,
-	Op: iris_1825i_13,
-  ConstK: iris_1825i_14,
-  OP_NAMES: iris_1825i_15,
-  versionRange: [iris_1825i_38, iris_1825i_39],
+  disassembleProto: (input, index) => disassembleProto(load_it(input), index),
+	read: (input) => load_it(input),
+	base64Decode,
+	Op,
+  ConstK,
+  OP_NAMES,
+  versionRange: [LBC_VERSION_MIN, LBC_VERSION_MAX],
 }
 
-if (typeof globalThis !== "undefined") globalThis.iris = iris_1825i_542
-if (typeof globalThis !== 'undefined') globalThis.IrisDecompiler = iris_1825i_542;
-if (typeof window !== 'undefined' && window !== globalThis) window.iris = iris_1825i_542
-if (typeof module !== 'undefined' && module.exports) module.exports = iris_1825i_542
+if (typeof globalThis !== "undefined") globalThis.iris = iris
+if (typeof globalThis !== 'undefined') globalThis.IrisDecompiler = iris;
+if (typeof window !== 'undefined' && window !== globalThis) window.iris = iris
+if (typeof module !== 'undefined' && module.exports) module.exports = iris
 
 })()
