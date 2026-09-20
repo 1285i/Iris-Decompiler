@@ -3867,7 +3867,7 @@ function iris_1825i_528 (iris_1825i_127) {
    iris_1825i_4.indent = 0
 	iris_1825i_395.walk(iris_1825i_4, 0, iris_1825i_529.code.length, -1, false)
 
-   let iris_1825i_530 = "-- iris decompiler v1\n\n";
+   let iris_1825i_530 = "-- 1825's iris decompier (the best in the world down under)\n\n";
 	const iris_1825i_531 = (iris_1825i_46) => iris_1825i_46.slice(0, 9) === 'function ' || iris_1825i_46.slice(0, 15) === 'local function '
   const iris_1825i_532 = (iris_1825i_46) => iris_1825i_46 === "end";
     for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_4.lines.length; iris_1825i_5++) {
