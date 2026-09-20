@@ -1,7 +1,5 @@
 # iris Decompiler
 
-A Luau (Roblox) bytecode decompiler that turns `.bin` files back into source. Everything runs locally in your browser—nothing leaves your machine.
-
 ## Usage
 
 browser:
@@ -21,8 +19,6 @@ const iris = require("./decompiler.js");
 const b = require("fs").readFileSync("script.bin");
 console.log(iris.decompile(b));
 ```
-
-`iris.read(input)` returns the raw parsed program instead of the text, in case you want to poke at it. `example.html` is a ready page: open it, pick a `.bin`, read the script. nothing leaves your machine.
 
 ## QuickJS
 
