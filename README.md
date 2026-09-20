@@ -57,10 +57,10 @@ qjs.exe
 # Testing
 
 ```bash
-node -e "const iris=require('./decompiler.js'),fs=require('fs');console.log(iris.decompile(new Uint8Array(fs.readFileSync('test-fixtures/health.bin'))))"
+node -e "const iris=require('./decompiler.js'),fs=require('fs');console.log(iris.decompile(new Uint8Array(fs.readFileSync('examples/health.bin'))))"
 ```
 
-`test-fixtures/health.bin` is real v14 bytecode. expect:
+`examples/health.bin` is real v14 bytecode. expect:
 
 ```lua
 -- iris decompiler v1
