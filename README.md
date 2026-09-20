@@ -1,75 +1,66 @@
-# iris
+# iris Decompiler
 
-## usage
+# Usage
+
+browser:
 
 ```html
 <script src="decompiler.js"></script>
-<script>var txt = iris.decompile(bytes);</script>
+<script>
+    const src = iris.decompile(new Uint8Array(buffer));   // file bytes
+    const src = iris.decompileBase64("...");              // or paste base64 text
+</script>
 ```
+
+node:
 
 ```js
 const iris = require("./decompiler.js");
-console.log(iris.decompile(require("fs").readFileSync("script.bin")));
+const b = require("fs").readFileSync("script.bin");
+console.log(iris.decompile(b));
 ```
 
-## how it works
+`iris.read(input)` returns the raw program instead of the text, in case you
+want to poke at it. `example.html` is a ready page: open it, pick a .bin, read
+the script. nothing leaves your machine.
 
-1. **Split the file into its parts.** header (version + type version), the
-   varint string table, then every proto. a proto is one function: how many
-   registers and params it has, the code (4-byte little-endian instructions),
-   the constant table (nil/bool/number/string/table/closure/vector/integer),
-   child proto ids, and optional debug info that contains the original
-   variable names.
+# QuickJS
 
-2. **Unscramble the opcodes.** roblox hides the opcodes by xor-multiplying
-   the opcode byte with a secret key. but the first instruction of any chunk
-   is always `PREPVARARGS`, so the key falls out of that one byte and every
-   instruction gets unscrambled (skipping AUX words, since some instructions
-   are 2 words). files older than v14 also get the old `NEWCLASS` opcode
-   renumbered (v14 added `FASTPCALL`, which bumped it from 89 to 90).
+quickjs doesn't have TextDecoder so the file ships its own byte decoder.
 
-3. **See which values really matter.** walk the code backwards and mark which
-   registers are still read later. registers that are never read again are
-   scratch values the compiler created, so they just fold into their one use.
-   registers that are read later need a name.
+```
+qjs.exe
+> std.loadScript("decompiler.js");
+> const f = std.open("script.bin", "rb");
+> const bytes = new Uint8Array(f.readAsArrayBuffer());
+> print(iris.decompile(bytes));
+```
 
-4. **Find the loops.** a backward jump means a loop. the instruction that
-   opens it tells you the kind: `FORNPREP` is a counting `for i = ...`,
-   `FORGPREP` is a `for k, v in pairs|ipairs(...)`, a conditional jump header
-   is a `while`, otherwise `repeat`/`while true`. each loop records its body,
-   backedge (where it jumps back), and exit (where it leaves).
+# How it works
 
-5. **Turn the steps back into code.** walk forward again, decoding each
-   instruction into expressions: `ADD` becomes a `+`, `NAMECALL` + `CALL`
-   becomes `obj:Method()`, `GETTABLEKS` becomes `obj.Name`. conditional jumps
-   turn into `if / elseif / else / end` chains. a guard jumping straight to
-   the loop backedge becomes `continue`; a jump out of the loop becomes
-   `break`; a tiny `LOADB true / LOADB false` pair becomes an if-expression.
+- read the file. header, string table, then every function (proto): its
+  instructions, its constants, its nested functions.
+- unshuffle the opcodes. roblox multiplies the opcode byte by a secret key,
+  but the first instruction is always the same one, so the key falls out of
+  that byte. files older than v14 get one opcode renumbered.
+- walk backwards and see which registers are read later. ones that aren't are
+  temps, fold them into their one use.
+- walk forwards. moves become expressions, conditional jumps become ifs,
+  backward jumps become loops (the opening instruction says which kind),
+  guard jumps become `continue`, loop-exit jumps become `break`.
+- functions inside functions: read the capture words, decompile the child,
+  print it back as a local function or whatever the compiler used it as.
+- names: debug names if present, else `WaitForChild("Right Shoulder")` ->
+  `RightShoulder`, else `num1`/`str1`/`tbl2`/`_`.
+- tidy the text. dead locals, `x += 1`, empty ifs, weighted-random idiom.
 
-6. **Handle functions inside functions.** `NEWCLOSURE`/`DUPCLOSURE` come with
-   capture words that say which outer variables the inner function sees and
-   whether by value or by reference. the inner proto gets decompiled the same
-   way and is printed as `local function`, `function Name()`, a table field,
-   or an inline function.
-
-7. **Give everything a name.** priority order: real names from the debug info
-   if any, otherwise guess from what the code does (`WaitForChild("Right
-   Shoulder")` -> `RightShoulder`), otherwise type-based generated names
-   (`num1`, `str1`, `tbl2`), otherwise `_` for values nobody reads. the same
-   type hints produce parameter/return annotations and even table shapes like
-   `{ id: string, weight: number }`.
-
-8. **Tidy up the text.** remove dead locals, fold single-use temps,
-   drop `x + 0`, turn `x = x + 1` into `x += 1` (luau only lets you compound
-   plain names, so `tbl[1] = tbl[1] + 1` stays written out), flatten empty
-   ifs, roll the weighted-random idiom back together, and either annotate or
-   delete unused functions.
-
-## check
+# Testing
 
 ```bash
-node -e "const iris=require('./decompiler.js'),fs=require('fs');console.log(iris.decompile(new Uint8Array(fs.readFileSync('examples/health.bin'))))"
+node -e "const iris=require('./decompiler.js'),fs=require('fs');console.log(iris.decompile(new Uint8Array(fs.readFileSync('test-fixtures/health.bin'))))"
 ```
+
+`test-fixtures/health.bin` is real v14 bytecode. expect:
 
 ```lua
 -- iris decompiler v1
@@ -84,3 +75,9 @@ end
 var1 = Humanoid.HealthChanged
 var1:Wait()
 ```
+
+# Notes
+
+- some if/else trees come out with a duplicated block instead of a neat
+  elseif. correct, just not pretty.
+- type names come from usage guesses
