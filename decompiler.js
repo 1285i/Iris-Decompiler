@@ -67,7 +67,6 @@ function iris_1825i_20 (iris_1825i_5) { return (iris_1825i_5|0)>>8 }
 function iris_1825i_21 (iris_1825i_5) { return iris_1825i_5&0xff }
 function iris_1825i_22 (iris_1825i_23) { return iris_1825i_23&0xff }
 function iris_1825i_24(iris_1825i_23) { return (iris_1825i_23>>8)&0xff }
-// aux layouts: 24-bit const, 1-bit const, top-bit not-flag
 function iris_1825i_25 (iris_1825i_23) { return iris_1825i_23&0xffffff }
 function iris_1825i_26 (iris_1825i_23) { return iris_1825i_23&0x1 }
 function iris_1825i_27(iris_1825i_23) { return (iris_1825i_23>>>31)!==0 }
@@ -177,12 +176,11 @@ varint64() {
 
 
 
-// first op is always PREPVARARGS, back the key out of it
+// first op is always PREPVARARGS
 function iris_1825i_48(iris_1825i_49) {
 	if (iris_1825i_49.length===0) return 1;
     const iris_1825i_50=iris_1825i_49[0]&0xff;
    if (iris_1825i_50===iris_1825i_13.PREPVARARGS) return 1;
-   // key has to be odd so the multiply stays invertible
 for (let iris_1825i_51 = 1; iris_1825i_51 < 256; iris_1825i_51+=2) {
 		if (((iris_1825i_50*iris_1825i_51)&0xff)===iris_1825i_13.PREPVARARGS) return iris_1825i_51
   }
@@ -486,7 +484,7 @@ function iris_1825i_105 (iris_1825i_106) {
   iris_1825i_4.encodingKey=iris_1825i_51|0
 
 
-	// v14 added FASTPCALL at 89 and pushed NEWCLASS to 90, remap old files
+	// v14 added FASTPCALL at 89 and pushed NEWCLASS to 90
 if (iris_1825i_57>=iris_1825i_38&&iris_1825i_57<14) {
 		for (const iris_1825i_58 of iris_1825i_4.protos) {
          for (let iris_1825i_5 = 0; iris_1825i_5 < iris_1825i_58.code.length; iris_1825i_5++) {
@@ -1071,8 +1069,6 @@ function iris_1825i_194(iris_1825i_123) {
   iris_1825i_195 += ' }';
 	return [[0, iris_1825i_195]]
 }
-
-// render-time guard so recursive tables print nil instead of looping
 const iris_1825i_199 = [];
 function iris_1825i_200 (iris_1825i_123) {
     return iris_1825i_199.indexOf(iris_1825i_123) >= 0 || iris_1825i_199.length >= 256 ? [[0, 'nil']] : null
@@ -1376,7 +1372,7 @@ const_from (iris_1825i_119) {
     return iris_1825i_67 ? iris_1825i_157(iris_1825i_67) : "??";
   }
 import_path (iris_1825i_72) {
-      // top 2 bits = path length, then three 10-bit string ids
+      // top 2 bits = path length, then three 10 bit string ids
 const iris_1825i_82 = iris_1825i_72 >>> 30
     const iris_1825i_149 = (iris_1825i_72 >>> 20) & 1023
       const iris_1825i_7 = (iris_1825i_72 >>> 10) & 1023;
@@ -1855,7 +1851,7 @@ maybe_if_expr(iris_1825i_4, iris_1825i_36) {
 		const iris_1825i_283 = iris_1825i_34(this.proto.code, iris_1825i_36);
     if (iris_1825i_283 <= iris_1825i_36 || iris_1825i_283 >= this.n) return -1;
     const iris_1825i_284 = this.proto.code[iris_1825i_36 + 1]
-      // LOADB-true / LOADB-false pair means the compiler had an if-expression
+      // LOADB-true / LOADB-false pair means the compiler had an if expression
       if (iris_1825i_21(iris_1825i_284) === iris_1825i_13.LOADB && iris_1825i_18(iris_1825i_284) === 1 && iris_1825i_283 === iris_1825i_36 + 3) {
          const iris_1825i_285 = iris_1825i_16(iris_1825i_284);
       const iris_1825i_286 = this.proto.code[iris_1825i_283]
@@ -2249,7 +2245,6 @@ do_loop (iris_1825i_4, iris_1825i_268, iris_1825i_550) {
          const iris_1825i_333 = iris_1825i_21(this.proto.code[iris_1825i_332])
 			if (this.is_cond_jump(iris_1825i_333)) {
             let iris_1825i_334 = iris_1825i_34(this.proto.code, iris_1825i_332)
-            // cond-jump landing on the backedge is a guard continue
 if ((iris_1825i_334 === iris_1825i_173.backedge || iris_1825i_334 === iris_1825i_173.header) && iris_1825i_332 + iris_1825i_31(iris_1825i_333) < iris_1825i_173.backedge) {
           const iris_1825i_335 = this.cond_of(iris_1825i_332, false)
 					iris_1825i_331.emit("if " + iris_1825i_226(iris_1825i_335) + ' then');
