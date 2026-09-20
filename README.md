@@ -34,12 +34,9 @@ qjs.exe
 
 ## API
 
-- `iris.decompile(input)` — decompiled source as a string
-- `iris.decompileBase64(b64)` — same, taking a base64 payload
-- `iris.decompileResult(input)` — `{ source, program, version, decodedFromBase64 }`
-- `iris.read(input)` — the raw parsed program
-- `iris.disassemble(input)` / `iris.disassembleProto(input, index)` — low-level opcode listing
-- `iris.Op`, `iris.ConstK`, `iris.OP_NAMES`, `iris.versionRange` — opcode/constant tables
+- `iris.decompile(input)` decompiled source as a string
+- `iris.decompileBase64(b64)` taking a base64 payload
+- `iris.disassemble(input)` / `iris.disassembleProto(input, index)` opcodes
 
 `input` is either a `Uint8Array` of file bytes or an object with `bytes` or `base64`.
 
